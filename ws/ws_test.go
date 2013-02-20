@@ -41,23 +41,29 @@ func (r *Res) Path() string {
 	return r.Parent.Path() + string(os.PathSeparator) + r.Name
 }
 
-var mu sync.RWMutex
-var all = make(map[string]*Res, 10000)
-
-func init() {
-	all["/"] = &Res{Name: ""}
+type Ws struct {
+	sync.RWMutex
+	root *Res
+	all  map[string]*Res
 }
-func addParent(path string) *Res {
-	if r, ok := all[path]; ok {
+
+func New() *Ws {
+	r := &Res{}
+	m := make(map[string]*Res, 10000)
+	m["/"] = r
+	return &Ws{root: r, all: m}
+}
+func (w *Ws) addParent(path string) *Res {
+	if r, ok := w.all[path]; ok {
 		return r
 	}
 	parent, name := filepath.Split(path)
 	var pa *Res
 	if len(parent) > 0 && parent != "/" {
-		pa = addParent(parent[:len(parent)-1])
+		pa = w.addParent(parent[:len(parent)-1])
 	}
 	r := &Res{Name: name, Flag: FlagDir | FlagLogical, Parent: pa}
-	all[path] = r
+	w.all[path] = r
 	return r
 }
 func newChild(pa *Res, fi os.FileInfo) *Res {
@@ -111,18 +117,18 @@ func (l byTypeAndName) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
-func addAllChildren(r *Res) {
+func (w *Ws) addAllChildren(r *Res) {
 	for _, c := range r.Children {
-		all[c.Path()] = c
+		w.all[c.Path()] = c
 		if c.Flag&FlagDir != 0 {
-			addAllChildren(c)
+			w.addAllChildren(c)
 		}
 	}
 }
-func Mount(path string) (*Res, error) {
-	mu.RLock()
-	r, ok := all[path]
-	mu.RUnlock()
+func (w *Ws) Mount(path string) (*Res, error) {
+	w.RLock()
+	r, ok := w.all[path]
+	w.RUnlock()
 	if ok {
 		return r, nil
 	}
@@ -140,27 +146,27 @@ func Mount(path string) (*Res, error) {
 	if err != nil {
 		return nil, err
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	r.Parent = addParent(d[:len(d)-1])
-	all[path] = r
-	addAllChildren(r)
+	w.Lock()
+	defer w.Unlock()
+	r.Parent = w.addParent(d[:len(d)-1])
+	w.all[path] = r
+	w.addAllChildren(r)
 	return r, nil
 }
-func mountAllSeq(dirs []string) {
+func mountAllSeq(w *Ws, dirs []string) {
 	for _, path := range dirs {
-		_, err := Mount(path)
+		_, err := w.Mount(path)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
 }
-func mountAllPar(dirs []string) {
+func mountAllPar(w *Ws, dirs []string) {
 	var wg sync.WaitGroup
 	wg.Add(len(dirs))
 	for _, path := range dirs {
 		go func(path string, wg *sync.WaitGroup) {
-			_, err := Mount(path)
+			_, err := w.Mount(path)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -172,13 +178,14 @@ func mountAllPar(dirs []string) {
 func TestWalkSrc(t *testing.T) {
 	dirs := build.Default.SrcDirs()
 	t.Log(dirs)
+	w := New()
 	start := time.Now()
 	if runtime.GOMAXPROCS(0) > 1 {
-		mountAllPar(dirs)
+		mountAllPar(w, dirs)
 	} else {
-		mountAllSeq(dirs)
+		mountAllSeq(w, dirs)
 	}
-	for p, r := range all {
+	for p, r := range w.all {
 		if p != r.Path() {
 			t.Error(p, "!=", r.Path())
 		}
@@ -189,5 +196,5 @@ func TestWalkSrc(t *testing.T) {
 	runtime.ReadMemStats(&mem)
 	f := "count: %d, took: %s, alloc: %d/%d kb, heap: %d/%d kb, objs: %d, gcs: %d"
 	kb := func(n uint64) uint64 { return n / (1 << 10) }
-	t.Logf(f, len(all), took, kb(mem.Alloc), kb(mem.TotalAlloc), kb(mem.HeapAlloc), kb(mem.HeapSys), mem.HeapObjects, mem.NumGC)
+	t.Logf(f, len(w.all), took, kb(mem.Alloc), kb(mem.TotalAlloc), kb(mem.HeapAlloc), kb(mem.HeapSys), mem.HeapObjects, mem.NumGC)
 }

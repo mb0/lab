@@ -2,6 +2,7 @@ package ws
 
 import (
 	"fmt"
+	"hash/fnv"
 	"os"
 	"path/filepath"
 	"sort"
@@ -14,12 +15,21 @@ const (
 	FlagMount
 )
 
+type Id uint32
+
+func NewId(path string) Id {
+	h := fnv.New32()
+	h.Write([]byte(path))
+	return Id(h.Sum32())
+}
+
 type Dir struct {
 	Path     string
 	Children []*Res
 }
 
 type Res struct {
+	Id     Id
 	Name   string
 	Flag   uint32
 	Parent *Res
@@ -38,9 +48,11 @@ func (r *Res) Path() string {
 }
 func newChild(pa *Res, fi os.FileInfo) *Res {
 	r := &Res{Name: fi.Name(), Parent: pa}
+	p := r.Path()
+	r.Id = NewId(p)
 	if fi.IsDir() {
 		r.Flag |= FlagDir
-		r.Dir = &Dir{Path: r.Path()}
+		r.Dir = &Dir{Path: p}
 	}
 	return r
 }
@@ -48,18 +60,19 @@ func newChild(pa *Res, fi os.FileInfo) *Res {
 type Ws struct {
 	sync.RWMutex
 	root *Res
-	all  map[string]*Res
+	all  map[Id]*Res
 }
 
 func New() *Ws {
-	r := &Res{}
-	m := make(map[string]*Res, 10000)
-	m["/"] = r
+	r := &Res{Id: NewId("/")}
+	m := make(map[Id]*Res, 10000)
+	m[r.Id] = r
 	return &Ws{root: r, all: m}
 }
 func (w *Ws) Mount(path string) (*Res, error) {
+	id := NewId(path)
 	w.RLock()
-	r, ok := w.all[path]
+	r, ok := w.all[id]
 	w.RUnlock()
 	if ok {
 		return r, nil
@@ -73,7 +86,7 @@ func (w *Ws) Mount(path string) (*Res, error) {
 	}
 	d, f := filepath.Split(path)
 	// add virtual parent
-	r = &Res{Name: f, Flag: FlagDir | FlagMount, Dir: &Dir{Path: path}}
+	r = &Res{Id: id, Name: f, Flag: FlagDir | FlagMount, Dir: &Dir{Path: path}}
 	err = read(r)
 	if err != nil {
 		return nil, err
@@ -81,12 +94,13 @@ func (w *Ws) Mount(path string) (*Res, error) {
 	w.Lock()
 	defer w.Unlock()
 	r.Parent = w.addParent(d[:len(d)-1])
-	w.all[path] = r
+	w.all[id] = r
 	w.addAllChildren(r)
 	return r, nil
 }
 func (w *Ws) addParent(path string) *Res {
-	if r, ok := w.all[path]; ok {
+	id := NewId(path)
+	if r, ok := w.all[id]; ok {
 		return r
 	}
 	parent, name := filepath.Split(path)
@@ -94,8 +108,8 @@ func (w *Ws) addParent(path string) *Res {
 	if len(parent) > 0 && parent != "/" {
 		pa = w.addParent(parent[:len(parent)-1])
 	}
-	r := &Res{Name: name, Flag: FlagDir | FlagLogical, Parent: pa}
-	w.all[path] = r
+	r := &Res{Id: id, Name: name, Flag: FlagDir | FlagLogical, Parent: pa}
+	w.all[id] = r
 	return r
 }
 func read(r *Res) error {
@@ -125,7 +139,7 @@ func read(r *Res) error {
 }
 func (w *Ws) addAllChildren(r *Res) {
 	for _, c := range r.Children {
-		w.all[c.Path()] = c
+		w.all[c.Id] = c
 		if c.Flag&FlagDir != 0 {
 			w.addAllChildren(c)
 		}

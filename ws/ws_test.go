@@ -41,9 +41,9 @@ func TestWalkSrc(t *testing.T) {
 	} else {
 		mountAllSeq(w, dirs)
 	}
-	for p, r := range w.all {
-		if p != r.Path() {
-			t.Error(p, "!=", r.Path())
+	for id, r := range w.all {
+		if rid := NewId(r.Path()); id != rid {
+			t.Error(id, "!=", rid, r.Path())
 		}
 	}
 	took := time.Since(start)

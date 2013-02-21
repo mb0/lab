@@ -57,10 +57,15 @@ func newChild(pa *Res, fi os.FileInfo) *Res {
 	return r
 }
 
+type Watcher interface {
+	Watch(r *Res) error
+}
+
 type Ws struct {
 	sync.RWMutex
-	root *Res
-	all  map[Id]*Res
+	root    *Res
+	all     map[Id]*Res
+	watcher Watcher
 }
 
 func New() *Ws {
@@ -142,6 +147,12 @@ func (w *Ws) addAllChildren(r *Res) {
 		w.all[c.Id] = c
 		if c.Flag&FlagDir != 0 {
 			w.addAllChildren(c)
+		}
+	}
+	if w.watcher != nil {
+		err := w.watcher.Watch(r)
+		if err != nil {
+			fmt.Println(err)
 		}
 	}
 }

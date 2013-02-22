@@ -265,6 +265,7 @@ func (w *ctrl) change(fsop Op, r *Res) error {
 	return nil
 }
 func (w *ctrl) remove(fsop Op, r *Res) error {
+	r.Lock()
 	if p := r.Parent; p != nil {
 		p.Lock()
 		defer p.Unlock()
@@ -275,6 +276,7 @@ func (w *ctrl) remove(fsop Op, r *Res) error {
 	rm := []*Res{r}
 	if r.Dir != nil {
 		walk(r.Children, func(c *Res) error {
+			c.Lock()
 			rm = append(rm, c)
 			return nil
 		})
@@ -282,7 +284,11 @@ func (w *ctrl) remove(fsop Op, r *Res) error {
 	for i := len(rm) - 1; i >= 0; i-- {
 		c := rm[i]
 		w.config.handle(fsop|Remove, c)
+		if c.Dir != nil {
+			c.Children = nil
+		}
 		delete(w.all, c.Id)
+		c.Unlock()
 	}
 	return nil
 }
@@ -306,7 +312,7 @@ func (w *ctrl) add(fsop Op, p *Res, name string) error {
 	p.Children = insert(p.Children, r)
 	w.all[r.Id] = r
 	if !fi.IsDir() {
-		// send event
+		w.config.handle(fsop|Add, r)
 		return nil
 	}
 	r.Flag |= FlagDir

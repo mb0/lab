@@ -3,6 +3,8 @@ package ws
 import (
 	"fmt"
 	"go/build"
+	"io/ioutil"
+	"os"
 	"runtime"
 	"sync"
 	"testing"
@@ -63,4 +65,63 @@ func TestWalkSrc(t *testing.T) {
 		t.Error("not clean after close")
 	}
 	t.Log(gcandstat())
+}
+func TestWatch(t *testing.T) {
+	dir, err := ioutil.TempDir("", "wsinotify")
+	if err != nil {
+		t.Fatal("failed to create temp dir")
+	}
+	events := make(chan struct {
+		Op
+		*Res
+	}, 10)
+	w := New(Config{CapHint: 100, Watcher: NewInotify, Handler: func(op Op, r *Res) {
+		events <- struct {
+			Op
+			*Res
+		}{op, r}
+	}})
+	defer w.Close()
+	fail := func(msg string, err error) {
+		if err != nil {
+			os.RemoveAll(dir)
+			t.Fatalf("%s: %s", msg, err)
+		}
+	}
+	expect := func(path string, ops ...Op) {
+		for _, op := range ops {
+			select {
+			case e := <-events:
+				e.Lock()
+				p := e.Path()
+				e.Unlock()
+				if e.Op != op || p != path {
+					t.Errorf("expected event %x %q got %x %q\n", op, path, e.Op, p)
+				}
+			case <-time.After(1 * time.Second):
+				t.Fatalf("expected event %x %q\n got timeout", op, path)
+			}
+		}
+	}
+	r, err := w.Mount(dir)
+	fail("mount", err)
+	expect(dir, Add, Change)
+	file := dir + "/testfile"
+	f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0666)
+	fail("create testfile", err)
+	f.Close()
+	expect(file, Add|Create, Change|Modify)
+	os.Remove(file)
+	expect(file, Remove|Delete)
+	f, err = os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0666)
+	fail("recreate testfile", err)
+	f.Close()
+	expect(file, Add|Create, Change|Modify)
+	os.RemoveAll(dir)
+	expect(file, Remove|Delete)
+	expect(dir, Remove|Delete)
+	if _, ok := w.all[r.Id]; ok {
+		t.Error("dir still exists after remove")
+	}
+	w.Close()
 }

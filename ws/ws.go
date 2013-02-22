@@ -2,61 +2,11 @@ package ws
 
 import (
 	"fmt"
-	"hash/fnv"
 	"os"
 	"path/filepath"
 	"sort"
 	"sync"
 )
-
-const (
-	FlagDir uint32 = 1 << iota
-	FlagLogical
-	FlagMount
-	FlagIgnore
-)
-
-type Id uint32
-
-func NewId(path string) Id {
-	h := fnv.New32()
-	h.Write([]byte(path))
-	return Id(h.Sum32())
-}
-
-type Dir struct {
-	Path     string
-	Children []*Res
-}
-
-type Res struct {
-	sync.Mutex
-	Id     Id
-	Name   string
-	Flag   uint32
-	Parent *Res
-	*Dir
-}
-
-func (r *Res) Path() string {
-	if r == nil {
-		return ""
-	}
-	if r.Dir != nil {
-		return r.Dir.Path
-	}
-	return r.Parent.Path() + string(os.PathSeparator) + r.Name
-}
-func newChild(pa *Res, fi os.FileInfo) *Res {
-	r := &Res{Name: fi.Name(), Parent: pa}
-	p := r.Path()
-	r.Id = NewId(p)
-	if fi.IsDir() {
-		r.Flag |= FlagDir
-		r.Dir = &Dir{Path: p}
-	}
-	return r
-}
 
 type Watcher interface {
 	Watch(r *Res) error
@@ -80,12 +30,12 @@ const (
 type Config struct {
 	// CapHint hints the expected peak resource capacity.
 	CapHint uint
-	// Returns a new watcher given the workspace control.
-	// If no Watcher is configured, mounting a path will result in unchanging snapshot.
+	// Watcher returns a new watcher given workspace control.
+	// Mounting a path results in a snapshot if no Watcher is configured.
 	Watcher func(Controller) (Watcher, error)
-	// Handles resource operation events if set.
+	// Handler handles resource operation events if set.
 	Handler func(Op, *Res)
-	// Filters resources if set.
+	// Filter filters resources if set.
 	// If filter returns true the resource is flagged with FlagIgnore but remains in the workspace.
 	// Ignored directories are not read.
 	Filter func(*Res) bool
@@ -246,174 +196,4 @@ func (w *Ws) addAllChildren(fsop Op, r *Res) {
 		}
 	}
 	w.config.Handler(fsop|Change, r)
-}
-
-type ctrl Ws
-
-func (w *ctrl) Control(op Op, id Id, name string) error {
-	var r, p *Res
-	w.Lock()
-	defer w.Unlock()
-	r = w.all[id]
-	if name != "" {
-		p, r = r, nil
-		if p != nil && p.Dir != nil {
-			p.Lock()
-			r = find(p.Children, name)
-			p.Unlock()
-		}
-	}
-	switch {
-	case op&Delete != 0:
-		if r == nil {
-			break
-		}
-		return w.remove(op, r)
-	case r != nil:
-		// res found, modify
-		return w.change(op, r)
-	case p != nil:
-		// parent found create child
-		return w.add(op, p, name)
-	}
-	// not found, ignore
-	return nil
-}
-func (w *ctrl) change(fsop Op, r *Res) error {
-	w.config.Handler(fsop|Change, r)
-	return nil
-}
-func (w *ctrl) remove(fsop Op, r *Res) error {
-	r.Lock()
-	if p := r.Parent; p != nil {
-		p.Lock()
-		defer p.Unlock()
-		if p.Dir != nil {
-			p.Children = remove(p.Children, r)
-		}
-	}
-	rm := []*Res{r}
-	if r.Dir != nil {
-		walk(r.Children, func(c *Res) error {
-			c.Lock()
-			rm = append(rm, c)
-			return nil
-		})
-	}
-	for i := len(rm) - 1; i >= 0; i-- {
-		c := rm[i]
-		w.config.Handler(fsop|Remove, c)
-		if c.Dir != nil {
-			c.Children = nil
-		}
-		delete(w.all, c.Id)
-		c.Unlock()
-	}
-	return nil
-}
-func (w *ctrl) add(fsop Op, p *Res, name string) error {
-	p.Lock()
-	defer p.Unlock()
-	// new lock try again
-	r := find(p.Children, name)
-	// ignore duplicate
-	if r != nil {
-		return nil
-	}
-	r = &Res{Name: name, Parent: p}
-	path := r.Path()
-	r.Id = NewId(path)
-	fi, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if fi.IsDir() {
-		r.Flag |= FlagDir
-	}
-	p.Children = insert(p.Children, r)
-	w.all[r.Id] = r
-	switch {
-	case w.config.Filter(r):
-		r.Flag |= FlagIgnore
-		fallthrough
-	case !fi.IsDir():
-		w.config.Handler(fsop|Add, r)
-		return nil
-	}
-	r.Dir = &Dir{Path: path}
-	if err = read(r, w.config.Filter); err != nil {
-		return err
-	}
-	w.config.Handler(fsop|Add, r)
-	(*Ws)(w).addAllChildren(fsop, r)
-	return nil
-}
-
-type byTypeAndName []*Res
-
-func (l byTypeAndName) Len() int {
-	return len(l)
-}
-func less(i, j *Res) bool {
-	if isdir := i.Flag&FlagDir != 0; isdir != (j.Flag&FlagDir != 0) {
-		return isdir
-	}
-	return i.Name < j.Name
-}
-func (l byTypeAndName) Less(i, j int) bool {
-	return less(l[i], l[j])
-}
-func (l byTypeAndName) Swap(i, j int) {
-	l[i], l[j] = l[j], l[i]
-}
-
-func insert(l []*Res, r *Res) []*Res {
-	i := sort.Search(len(l), func(i int) bool {
-		return less(r, l[i])
-	})
-	if i < len(l) {
-		if i > 0 && l[i-1].Id == r.Id {
-			l[i-1] = r
-			return l
-		}
-		return append(l[:i], append([]*Res{r}, l[i:]...)...)
-	}
-	return append(l, r)
-}
-func remove(l []*Res, r *Res) []*Res {
-	i := sort.Search(len(l), func(i int) bool {
-		return less(r, l[i])
-	})
-	if i > 0 && l[i-1].Id == r.Id {
-		return append(l[:i-1], l[i:]...)
-	}
-	return l
-}
-
-var Skip = fmt.Errorf("skip")
-
-func walk(l []*Res, f func(*Res) error) error {
-	var err error
-	for _, c := range l {
-		if err = f(c); err == Skip {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		if c.Dir != nil {
-			if err = walk(c.Children, f); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-func find(l []*Res, name string) *Res {
-	for _, r := range l {
-		if r.Name == name {
-			return r
-		}
-	}
-	return nil
 }

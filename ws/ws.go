@@ -29,12 +29,12 @@ type Dir struct {
 }
 
 type Res struct {
+	sync.Mutex
 	Id     Id
 	Name   string
 	Flag   uint32
 	Parent *Res
 	*Dir
-	sync.Mutex
 }
 
 func (r *Res) Path() string {
@@ -59,29 +59,32 @@ func newChild(pa *Res, fi os.FileInfo) *Res {
 
 type Watcher interface {
 	Watch(r *Res) error
+	Close()
+}
+
+type Config struct {
+	CapHint uint
+	Watcher func(*Ws) (Watcher, error)
 }
 
 type Ws struct {
 	sync.RWMutex
+	config  Config
 	root    *Res
 	all     map[Id]*Res
 	watcher Watcher
 }
 
-func New() *Ws {
+// New creates a workspace configured with c.
+func New(c Config) *Ws {
 	r := &Res{Id: NewId("/")}
-	m := make(map[Id]*Res, 10000)
-	m[r.Id] = r
-	return &Ws{root: r, all: m}
+	w := &Ws{config: c, root: r, all: make(map[Id]*Res, c.CapHint)}
+	w.all[r.Id] = r
+	return w
 }
+
+// Mount adds the directory tree at path to the workspace.
 func (w *Ws) Mount(path string) (*Res, error) {
-	id := NewId(path)
-	w.RLock()
-	r, ok := w.all[id]
-	w.RUnlock()
-	if ok {
-		return r, nil
-	}
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -89,19 +92,53 @@ func (w *Ws) Mount(path string) (*Res, error) {
 	if !fi.IsDir() {
 		return nil, fmt.Errorf("not a directory")
 	}
-	d, f := filepath.Split(path)
-	// add virtual parent
-	r = &Res{Id: id, Name: f, Flag: FlagDir | FlagMount, Dir: &Dir{Path: path}}
-	err = read(r)
+	r, err := w.mount(path)
 	if err != nil {
-		return nil, err
+		return r, err
+	}
+	r.Lock()
+	err = read(r)
+	r.Unlock()
+	if err != nil {
+		return r, err
 	}
 	w.Lock()
 	defer w.Unlock()
-	r.Parent = w.addParent(d[:len(d)-1])
-	w.all[id] = r
 	w.addAllChildren(r)
 	return r, nil
+}
+func (w *Ws) mount(path string) (*Res, error) {
+	id := NewId(path)
+	d, f := filepath.Split(path)
+	w.Lock()
+	defer w.Unlock()
+	r, ok := w.all[id]
+	if ok {
+		return r, fmt.Errorf("duplicate")
+	}
+	r = &Res{Id: id, Name: f, Flag: FlagDir | FlagMount, Dir: &Dir{Path: path}}
+	// add virtual parent
+	r.Parent = w.addParent(d[:len(d)-1])
+	w.all[id] = r
+	return r, nil
+}
+
+// Close closes the workspace.
+// The workspace and all its resources are invalid afterwards.
+func (w *Ws) Close() {
+	w.Lock()
+	defer w.Unlock()
+	if w.watcher != nil {
+		w.watcher.Close()
+		w.watcher = nil
+	}
+	// scatter garbage
+	for id, r := range w.all {
+		r.Parent, r.Dir = nil, nil
+		delete(w.all, id)
+	}
+	w.all = nil
+	w.root = nil
 }
 func (w *Ws) addParent(path string) *Res {
 	id := NewId(path)

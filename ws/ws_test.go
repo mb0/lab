@@ -31,10 +31,19 @@ func mountAllPar(w *Ws, dirs []string) {
 	}
 	wg.Wait()
 }
+
+func kb(n uint64) uint64 { return n / (1 << 10) }
+func gcandstat() string {
+	runtime.GC()
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
+	f := "alloc: %d/%d kb, heap: %d/%d kb, objs: %d, gcs: %d"
+	return fmt.Sprintf(f, kb(mem.Alloc), kb(mem.TotalAlloc), kb(mem.HeapAlloc), kb(mem.HeapSys), mem.HeapObjects, mem.NumGC)
+}
 func TestWalkSrc(t *testing.T) {
 	dirs := build.Default.SrcDirs()
 	t.Log(dirs)
-	w := New()
+	w := New(Config{CapHint: 8000})
 	start := time.Now()
 	if runtime.GOMAXPROCS(0) > 1 {
 		mountAllPar(w, dirs)
@@ -47,10 +56,11 @@ func TestWalkSrc(t *testing.T) {
 		}
 	}
 	took := time.Since(start)
-	runtime.GC()
-	var mem runtime.MemStats
-	runtime.ReadMemStats(&mem)
-	f := "count: %d, took: %s, alloc: %d/%d kb, heap: %d/%d kb, objs: %d, gcs: %d"
-	kb := func(n uint64) uint64 { return n / (1 << 10) }
-	t.Logf(f, len(w.all), took, kb(mem.Alloc), kb(mem.TotalAlloc), kb(mem.HeapAlloc), kb(mem.HeapSys), mem.HeapObjects, mem.NumGC)
+	t.Logf("count: %d, took: %s", len(w.all), took)
+	t.Log(gcandstat())
+	w.Close()
+	if len(w.all) != 0 || w.watcher != nil {
+		t.Error("not clean after close")
+	}
+	t.Log(gcandstat())
 }

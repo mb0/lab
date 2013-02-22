@@ -13,6 +13,7 @@ const (
 	FlagDir uint32 = 1 << iota
 	FlagLogical
 	FlagMount
+	FlagIgnore
 )
 
 type Id uint32
@@ -77,16 +78,29 @@ const (
 )
 
 type Config struct {
+	// CapHint hints the expected peak resource capacity.
 	CapHint uint
+	// Returns a new watcher given the workspace control.
+	// If no Watcher is configured, mounting a path will result in unchanging snapshot.
 	Watcher func(Controller) (Watcher, error)
+	// Handles resource operation events if set.
 	Handler func(Op, *Res)
+	// Filters resources if set.
+	// If filter returns true the resource is flagged with FlagIgnore but remains in the workspace.
+	// Ignored directories are not read.
+	Filter func(*Res) bool
 }
 
-func (c Config) handle(op Op, r *Res) {
-	if c.Handler != nil {
-		c.Handler(op, r)
+func (c *Config) filldefaullts() {
+	if c.Filter == nil {
+		c.Filter = nilfilter
+	}
+	if c.Handler == nil {
+		c.Handler = nilhandler
 	}
 }
+func nilhandler(Op, *Res) {}
+func nilfilter(*Res) bool { return false }
 
 type Controller interface {
 	Control(op Op, id Id, name string) error
@@ -103,6 +117,7 @@ type Ws struct {
 // New creates a workspace configured with c.
 func New(c Config) *Ws {
 	r := &Res{Id: NewId("/")}
+	c.filldefaullts()
 	w := &Ws{config: c, root: r, all: make(map[Id]*Res, c.CapHint)}
 	w.all[r.Id] = r
 	return w
@@ -122,7 +137,7 @@ func (w *Ws) Mount(path string) (*Res, error) {
 		return r, err
 	}
 	r.Lock()
-	err = read(r)
+	err = read(r, w.config.Filter)
 	r.Unlock()
 	if err != nil {
 		return r, err
@@ -152,7 +167,7 @@ func (w *Ws) mount(path string) (*Res, error) {
 	// add virtual parent
 	r.Parent = w.addParent(d[:len(d)-1])
 	w.all[id] = r
-	w.config.handle(Add, r)
+	w.config.Handler(Add, r)
 	return r, nil
 }
 
@@ -187,7 +202,7 @@ func (w *Ws) addParent(path string) *Res {
 	w.all[id] = r
 	return r
 }
-func read(r *Res) error {
+func read(r *Res, filter func(*Res) bool) error {
 	f, err := os.Open(r.Dir.Path)
 	if err != nil {
 		return err
@@ -204,8 +219,12 @@ func read(r *Res) error {
 	sort.Sort(byTypeAndName(children))
 	r.Children = children
 	for _, c := range children {
+		if filter(c) {
+			c.Flag |= FlagIgnore
+			continue
+		}
 		if c.Flag&FlagDir != 0 {
-			if err := read(c); err != nil {
+			if err := read(c, filter); err != nil {
 				fmt.Println(err)
 			}
 		}
@@ -215,8 +234,8 @@ func read(r *Res) error {
 func (w *Ws) addAllChildren(fsop Op, r *Res) {
 	for _, c := range r.Children {
 		w.all[c.Id] = c
-		w.config.handle(fsop|Add, c)
-		if c.Flag&FlagDir != 0 {
+		w.config.Handler(fsop|Add, c)
+		if c.Flag&(FlagDir|FlagIgnore) == FlagDir {
 			w.addAllChildren(fsop, c)
 		}
 	}
@@ -226,7 +245,7 @@ func (w *Ws) addAllChildren(fsop Op, r *Res) {
 			fmt.Println(err)
 		}
 	}
-	w.config.handle(fsop|Change, r)
+	w.config.Handler(fsop|Change, r)
 }
 
 type ctrl Ws
@@ -261,7 +280,7 @@ func (w *ctrl) Control(op Op, id Id, name string) error {
 	return nil
 }
 func (w *ctrl) change(fsop Op, r *Res) error {
-	w.config.handle(fsop|Change, r)
+	w.config.Handler(fsop|Change, r)
 	return nil
 }
 func (w *ctrl) remove(fsop Op, r *Res) error {
@@ -283,7 +302,7 @@ func (w *ctrl) remove(fsop Op, r *Res) error {
 	}
 	for i := len(rm) - 1; i >= 0; i-- {
 		c := rm[i]
-		w.config.handle(fsop|Remove, c)
+		w.config.Handler(fsop|Remove, c)
 		if c.Dir != nil {
 			c.Children = nil
 		}
@@ -308,19 +327,24 @@ func (w *ctrl) add(fsop Op, p *Res, name string) error {
 	if err != nil {
 		return err
 	}
-
+	if fi.IsDir() {
+		r.Flag |= FlagDir
+	}
 	p.Children = insert(p.Children, r)
 	w.all[r.Id] = r
-	if !fi.IsDir() {
-		w.config.handle(fsop|Add, r)
+	switch {
+	case w.config.Filter(r):
+		r.Flag |= FlagIgnore
+		fallthrough
+	case !fi.IsDir():
+		w.config.Handler(fsop|Add, r)
 		return nil
 	}
-	r.Flag |= FlagDir
 	r.Dir = &Dir{Path: path}
-	if err = read(r); err != nil {
+	if err = read(r, w.config.Filter); err != nil {
 		return err
 	}
-	w.config.handle(fsop|Add, r)
+	w.config.Handler(fsop|Add, r)
 	(*Ws)(w).addAllChildren(fsop, r)
 	return nil
 }

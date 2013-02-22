@@ -11,6 +11,13 @@ import (
 
 var paths = flag.String("paths", "", "paths to watch. defaults to cwd")
 
+func filter(r *ws.Res) bool {
+	if len(r.Name) > 0 && r.Name[0] == '.' {
+		return true
+	}
+	return false
+}
+
 func main() {
 	flag.Parse()
 	var err error
@@ -26,8 +33,11 @@ func main() {
 	w := ws.New(ws.Config{
 		CapHint: 1000,
 		Watcher: ws.NewInotify,
+		Filter:  filter,
 		Handler: func(op ws.Op, r *ws.Res) {
-			fmt.Printf("op %x for %s\n", op, r.Path())
+			if r.Flag&ws.FlagIgnore == 0 {
+				fmt.Printf("op %x for %s\n", op, r.Path())
+			}
 		},
 	})
 	defer w.Close()

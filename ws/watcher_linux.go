@@ -108,7 +108,11 @@ func (w *inotify) readEvents() {
 			if err != nil {
 				log.Println(os.NewSyscallError("close", err))
 			}
+
+			w.Lock()
+			defer w.Unlock()
 			w.watchfd = -1
+			w.watches, w.ids = nil, nil
 			return
 		}
 		if n < 0 {

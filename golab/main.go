@@ -15,6 +15,7 @@ import (
 var paths = flag.String("paths", "", "paths to watch. defaults to cwd")
 
 var src *gosrc.Src
+
 func filter(r *ws.Res) bool {
 	if len(r.Name) > 0 && r.Name[0] == '.' {
 		return true
@@ -57,11 +58,9 @@ func main() {
 		Handler: handler,
 	})
 	defer w.Close()
-	for _, dir := range dirs {
-		_, err = w.Mount(dir)
+	for i, err := range ws.MountAll(w, dirs) {
 		if err != nil {
-			fmt.Println(dir, err)
-			return
+			fmt.Printf("error mounting %s: %s\n", dirs[i], err)
 		}
 	}
 	c := make(chan os.Signal)

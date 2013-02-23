@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"sync"
 )
@@ -66,8 +67,12 @@ type Ws struct {
 
 // New creates a workspace configured with c.
 func New(c Config) *Ws {
-	r := &Res{Id: NewId("/")}
 	c.filldefaullts()
+	var name string
+	if runtime.GOOS != "windows" {
+		name = "/"
+	}
+	r := &Res{Id: NewId(name), Name: name}
 	w := &Ws{config: c, root: r, all: make(map[Id]*Res, c.CapHint)}
 	w.all[r.Id] = r
 	return w
@@ -102,6 +107,7 @@ func (w *Ws) Mount(path string) (*Res, error) {
 	return r, nil
 }
 func (w *Ws) mount(path string) (*Res, error) {
+	path = filepath.Clean(path)
 	id := NewId(path)
 	d, f := filepath.Split(path)
 	w.Lock()
@@ -119,7 +125,7 @@ func (w *Ws) mount(path string) (*Res, error) {
 	}
 	r = &Res{Id: id, Name: f, Flag: FlagDir | FlagMount, Dir: &Dir{Path: path}}
 	// add virtual parent
-	r.Parent = w.addParent(d[:len(d)-1])
+	r.Parent = w.logicalParent(d)
 	w.all[id] = r
 	w.config.Handler(Add, r)
 	return r, nil
@@ -142,19 +148,43 @@ func (w *Ws) Close() {
 	w.all = nil
 	w.root = nil
 }
-func (w *Ws) addParent(path string) *Res {
-	id := NewId(path)
-	if r, ok := w.all[id]; ok {
-		return r
+func (w *Ws) logicalParent(path string) *Res {
+	parts := split(path)
+	r := w.root
+	for i := len(parts) - 1; i >= 0; i-- {
+		if r.Dir == nil {
+			r.Dir = &Dir{Path: r.Path()}
+		} else if c := find(r.Children, parts[i]); c != nil {
+			r = c
+			continue
+		}
+		c := &Res{Name: parts[i], Parent: r, Flag: FlagDir | FlagLogical}
+		p := c.Path()
+		c.Dir = &Dir{Path: p}
+		c.Id = NewId(p)
+		r.Children = insert(r.Children, c)
+		w.all[c.Id], r = c, c
 	}
-	parent, name := filepath.Split(path)
-	var pa *Res
-	if len(parent) > 0 && parent != "/" {
-		pa = w.addParent(parent[:len(parent)-1])
-	}
-	r := &Res{Id: id, Name: name, Flag: FlagDir | FlagLogical, Parent: pa}
-	w.all[id] = r
 	return r
+}
+func split(path string) []string {
+	parts := make([]string, 0, 8)
+	dir, file := path, ""
+	for dir != "" {
+		if i := len(dir) - 1; dir[i] == os.PathSeparator {
+			dir = dir[:i]
+		}
+		dir, file = filepath.Split(dir)
+		if file != "" {
+			parts = append(parts, file)
+			continue
+		}
+		break
+	}
+	if dir != "" {
+		return append(parts, dir)
+	}
+	return parts
 }
 func read(r *Res, filter func(*Res) bool) error {
 	f, err := os.Open(r.Dir.Path)

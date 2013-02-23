@@ -38,11 +38,14 @@ type Res struct {
 }
 
 func (r *Res) Path() string {
-	if r == nil {
-		return ""
-	}
 	if r.Dir != nil {
 		return r.Dir.Path
+	}
+	if r.Parent == nil {
+		return r.Name
+	}
+	if r.Parent.Parent == nil {
+		return r.Parent.Name + r.Name
 	}
 	return r.Parent.Path() + string(os.PathSeparator) + r.Name
 }

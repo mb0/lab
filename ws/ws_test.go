@@ -101,3 +101,12 @@ func TestWatch(t *testing.T) {
 	}
 	w.Close()
 }
+
+func TestSplitPath(t *testing.T) {
+	expect := []string{"c", "b", "a"}
+	for i, p := range split("/a/b/c") {
+		if e := expect[i]; p != e {
+			fmt.Printf("%s != %s\n", p, e)
+		}
+	}
+}

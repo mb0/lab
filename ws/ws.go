@@ -86,6 +86,10 @@ func (w *Ws) Mount(path string) (*Res, error) {
 	if err != nil {
 		return r, err
 	}
+	if w.config.Filter(r) {
+		r.Flag |= FlagIgnore
+		return r, nil
+	}
 	r.Lock()
 	err = read(r, w.config.Filter)
 	r.Unlock()
@@ -132,7 +136,7 @@ func (w *Ws) Close() {
 	}
 	// scatter garbage
 	for id, r := range w.all {
-		r.Parent, r.Dir = nil, nil
+		r.Dir = nil
 		delete(w.all, id)
 	}
 	w.all = nil

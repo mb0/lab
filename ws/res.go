@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	FlagDir uint32 = 1 << iota
+	FlagDir uint64 = 1 << iota
 	FlagLogical
 	FlagMount
 	FlagIgnore
@@ -32,7 +32,7 @@ type Res struct {
 	sync.Mutex
 	Id     Id
 	Name   string
-	Flag   uint32
+	Flag   uint64
 	Parent *Res
 	*Dir
 }

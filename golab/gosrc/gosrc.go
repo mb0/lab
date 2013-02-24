@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	FlagGo  uint32 = 1 << 16
-	FlagSrc uint32 = 1 << 17
+	FlagGo  uint64 = 1 << 16
+	FlagSrc uint64 = 1 << 17
 	FlagPkg        = FlagGo | FlagSrc
 )
 

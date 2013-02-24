@@ -106,6 +106,16 @@ func (w *Ws) Mount(path string) (*Res, error) {
 	w.addAllChildren(0, r)
 	return r, nil
 }
+func (w *Ws) Res(id Id) *Res {
+	w.RLock()
+	defer w.RUnlock()
+	return w.all[id]
+}
+func (w *Ws) Walk(l []*Res, f func(r *Res) error) error {
+	w.RLock()
+	defer w.RUnlock()
+	return walk(l, f)
+}
 func (w *Ws) mount(path string) (*Res, error) {
 	path = filepath.Clean(path)
 	id := NewId(path)

@@ -12,9 +12,9 @@ import (
 	"github.com/mb0/lab/ws"
 )
 
-var paths = flag.String("paths", "", "paths to watch. defaults to cwd")
-
-var src *gosrc.Src
+var workpaths = flag.String("work", "./...", "path list of active packages. defaults to cwd")
+var dirs = build.Default.SrcDirs()
+var src = gosrc.New(ids(dirs))
 
 func filter(r *ws.Res) bool {
 	if len(r.Name) > 0 && r.Name[0] == '.' {
@@ -37,19 +37,7 @@ func ids(paths []string) []ws.Id {
 }
 func main() {
 	flag.Parse()
-	var err error
-	if *paths == "" {
-		*paths, err = os.Getwd()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	}
-	// TODO create active working set
-	_ = ids(filepath.SplitList(*paths))
-	dirs := build.Default.SrcDirs()
-	src = gosrc.New(ids(dirs))
-	go src.Run()
+	initwork(*workpaths)
 	fmt.Printf("starting lab for %v\n", dirs)
 	w := ws.New(ws.Config{
 		CapHint: 8000,
@@ -58,6 +46,7 @@ func main() {
 		Handler: handler,
 	})
 	defer w.Close()
+	go src.Run(w)
 	for i, err := range ws.MountAll(w, dirs) {
 		if err != nil {
 			fmt.Printf("error mounting %s: %s\n", dirs[i], err)
@@ -66,4 +55,14 @@ func main() {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, os.Kill)
 	<-c
+}
+func initwork(paths string) {
+	list := filepath.SplitList(paths)
+	for _, p := range list {
+		err := src.WorkOn(p)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+	}
 }

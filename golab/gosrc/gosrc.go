@@ -14,26 +14,29 @@ var FlagGo uint64 = 1 << 16
 type PkgFlag uint64
 
 const (
-	Found PkgFlag = 1 << iota
+	_ PkgFlag = 1 << iota
 
-	Scanned
+	Watching
+	Recursing
+
+	Found   // Path, Dir
+	Scanned // Name, Src, Test
 
 	HasSource
 	HasTest
 	HasXTest
-
-	Watching
-	Recursing
 )
 
 type Pkg struct {
 	sync.Mutex
 	Id   ws.Id
-	Path string
-	Dir  string
-	Name string
 	Flag PkgFlag
 	Pkgs []*Pkg
+
+	Path string
+	Dir  string
+
+	Name string
 	Src  *Info
 	Test *Info
 }
@@ -101,6 +104,7 @@ func (s *Src) Handle(op ws.Op, r *ws.Res) {
 	}
 	return
 }
+
 func (s *Src) Run(w *ws.Ws) {
 	s.w = w
 	var timeout <-chan time.Time
@@ -119,6 +123,44 @@ func (s *Src) Run(w *ws.Ws) {
 			s.remove(r)
 		}
 	}
+}
+func (s *Src) change(r *ws.Res) {
+	s.Lock()
+	defer s.Unlock()
+	p := s.getorcreate(r)
+	if p.Flag&Watching != 0 {
+		// enqueue build and test run
+		Scan(p, r)
+	}
+}
+func (s *Src) remove(r *ws.Res) {
+	s.Lock()
+	defer s.Unlock()
+	p, ok := s.pkgs[r.Id]
+	if !ok {
+		return
+	}
+	// clean up p
+	delete(s.pkgs, p.Id)
+}
+func (s *Src) getorcreate(r *ws.Res) *Pkg {
+	p, ok := s.pkgs[r.Id]
+	if !ok {
+		p = &Pkg{Id: r.Id, Dir: r.Path()}
+		s.pkgs[r.Id] = p
+	}
+	if p.Flag&Found == 0 {
+		p.Flag |= Found
+		p.Path = importPath(r)
+		if r.Parent.Parent.Flag&FlagGo != 0 {
+			pa := s.getorcreate(r.Parent)
+			if pa.Flag&Recursing != 0 {
+				p.Flag |= Watching | Recursing
+			}
+			pa.Pkgs = append(pa.Pkgs, p)
+		}
+	}
+	return p
 }
 
 func (s *Src) WorkOn(path string) error {
@@ -145,13 +187,12 @@ func (s *Src) WorkOn(path string) error {
 	pkg.Flag |= flag
 	if s.w != nil {
 		if r := s.w.Res(pkg.Id); r != nil {
-			s.work(pkg, r)
+			scanAll(pkg, r)
 		}
 	}
 	return nil
 }
-
-func (s *Src) work(p *Pkg, r *ws.Res) error {
+func scanAll(p *Pkg, r *ws.Res) error {
 	Scan(p, r)
 	if p.Flag&Recursing != 0 {
 		for _, c := range p.Pkgs {
@@ -159,9 +200,8 @@ func (s *Src) work(p *Pkg, r *ws.Res) error {
 				continue
 			}
 			c.Flag |= Watching | Recursing
-			cr := getchild(r, c.Id)
-			if cr != nil {
-				s.work(c, cr)
+			if cr := getchild(r, c.Id); cr != nil {
+				scanAll(c, cr)
 			}
 		}
 	}
@@ -175,48 +215,14 @@ func getchild(r *ws.Res, id ws.Id) *ws.Res {
 	}
 	return nil
 }
+
+func importPath(r *ws.Res) string {
+	return string(scanpath(r, make([]byte, 0, 64)))
+}
 func scanpath(r *ws.Res, buf []byte) []byte {
 	if r.Parent.Parent.Flag&FlagGo != 0 {
 		buf = scanpath(r.Parent, buf)
 		buf = append(buf, '/')
 	}
 	return append(buf, []byte(r.Name)...)
-}
-func importPath(r *ws.Res) string {
-	return string(scanpath(r, make([]byte, 0, 64)))
-}
-func (s *Src) change(r *ws.Res) {
-	s.Lock()
-	defer s.Unlock()
-	p := s.getorcreate(r)
-	if p.Flag&Watching != 0 {
-		// enqueue build and test run
-		s.work(p, r)
-	}
-}
-func (s *Src) getorcreate(r *ws.Res) *Pkg {
-	p, ok := s.pkgs[r.Id]
-	if !ok {
-		p = &Pkg{Id: r.Id}
-		s.pkgs[r.Id] = p
-	}
-	if p.Flag&Found == 0 {
-		p.Flag |= Found
-		p.Path = importPath(r)
-		if r.Parent.Parent.Flag&FlagGo != 0 {
-			pa := s.getorcreate(r.Parent)
-			pa.Pkgs = append(pa.Pkgs, p)
-		}
-	}
-	return p
-}
-func (s *Src) remove(r *ws.Res) {
-	s.Lock()
-	defer s.Unlock()
-	p, ok := s.pkgs[r.Id]
-	if !ok {
-		return
-	}
-	// clean up p
-	delete(s.pkgs, p.Id)
 }

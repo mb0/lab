@@ -152,7 +152,9 @@ func (w *Ws) Close() {
 	}
 	// scatter garbage
 	for id, r := range w.all {
+		r.Lock()
 		r.Dir = nil
+		r.Unlock()
 		delete(w.all, id)
 	}
 	w.all = nil
@@ -208,7 +210,8 @@ func read(r *Res, filter func(*Res) bool) error {
 	}
 	children := make([]*Res, 0, len(list))
 	for _, fi := range list {
-		children = append(children, newChild(r, fi))
+		c, _ := newChild(r, fi.Name(), fi.IsDir(), false)
+		children = append(children, c)
 	}
 	sort.Sort(byTypeAndName(children))
 	r.Children = children

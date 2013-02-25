@@ -1,9 +1,5 @@
 package ws
 
-import (
-	"os"
-)
-
 type ctrl Ws
 
 func (w *ctrl) Control(op Op, id Id, name string) error {
@@ -71,32 +67,21 @@ func (w *ctrl) add(fsop Op, p *Res, name string) error {
 	p.Lock()
 	defer p.Unlock()
 	// new lock try again
-	r := find(p.Children, name)
-	// ignore duplicate
-	if r != nil {
+	if find(p.Children, name) != nil {
+		// ignore duplicate
 		return nil
 	}
-	r = &Res{Name: name, Parent: p}
-	path := r.Path()
-	r.Id = NewId(path)
-	fi, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if fi.IsDir() {
-		r.Flag |= FlagDir
-	}
+	r, err := newChild(p, name, false, true)
 	p.Children = insert(p.Children, r)
 	w.all[r.Id] = r
 	switch {
 	case w.config.Filter(r):
 		r.Flag |= FlagIgnore
 		fallthrough
-	case !fi.IsDir():
+	case r.Dir == nil:
 		w.config.Handler(fsop|Add, r)
 		return nil
 	}
-	r.Dir = &Dir{Path: path}
 	if err = read(r, w.config.Filter); err != nil {
 		return err
 	}

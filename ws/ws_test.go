@@ -68,9 +68,7 @@ func TestWatch(t *testing.T) {
 		for _, op := range ops {
 			select {
 			case e := <-events:
-				e.Lock()
 				p := e.Path()
-				e.Unlock()
 				if e.Op != op || p != path {
 					t.Errorf("expected event %x %q got %x %q\n", op, path, e.Op, p)
 				}

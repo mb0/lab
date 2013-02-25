@@ -37,27 +37,44 @@ type Res struct {
 	*Dir
 }
 
-func (r *Res) Path() string {
+func (r *Res) path(lock bool) string {
+	if r == nil {
+		return ""
+	}
+	if lock {
+		r.Lock()
+		defer r.Unlock()
+	}
 	if r.Dir != nil {
 		return r.Dir.Path
 	}
-	if r.Parent == nil {
-		return r.Name
+	p := r.Parent.path(lock)
+	if len(p) < 2 {
+		return p + r.Name
 	}
-	if r.Parent.Parent == nil {
-		return r.Parent.Name + r.Name
-	}
-	return r.Parent.Path() + string(os.PathSeparator) + r.Name
+	return p + string(os.PathSeparator) + r.Name
 }
-func newChild(pa *Res, fi os.FileInfo) *Res {
-	r := &Res{Name: fi.Name(), Parent: pa}
-	p := r.Path()
-	r.Id = NewId(p)
-	if fi.IsDir() {
-		r.Flag |= FlagDir
-		r.Dir = &Dir{Path: p}
+
+func (r *Res) Path() string {
+	return r.path(true)
+}
+
+func newChild(pa *Res, name string, isdir, stat bool) (*Res, error) {
+	r := &Res{Name: name, Parent: pa}
+	path := r.path(false)
+	r.Id = NewId(path)
+	if stat {
+		fi, err := os.Stat(path)
+		if err != nil {
+			return nil, err
+		}
+		isdir = fi.IsDir()
 	}
-	return r
+	if isdir {
+		r.Flag |= FlagDir
+		r.Dir = &Dir{Path: path}
+	}
+	return r, nil
 }
 
 type byTypeAndName []*Res
@@ -120,7 +137,13 @@ func walk(l []*Res, f func(*Res) error) error {
 		if err != nil {
 			return err
 		}
+		var cl []*Res
+		c.Lock()
 		if c.Dir != nil {
+			cl = c.Children
+		}
+		c.Unlock()
+		if len(cl) > 0 {
 			if err = walk(c.Children, f); err != nil {
 				return err
 			}

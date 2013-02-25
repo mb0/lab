@@ -10,57 +10,6 @@ import (
 	"github.com/mb0/lab/ws"
 )
 
-type Import struct {
-	Path, Name string
-	Id         ws.Id
-}
-type File struct {
-	Name string
-	Id   ws.Id
-	Err  error
-}
-
-type Info struct {
-	Files   []File
-	Imports []Import
-	Uses    []ws.Id
-}
-
-func (nfo *Info) Import(path string) *Import {
-	for i, imprt := range nfo.Imports {
-		if path == imprt.Path {
-			return &nfo.Imports[i]
-		}
-	}
-	return nil
-}
-func (nfo *Info) AddImport(path string) {
-	if nfo.Import(path) == nil {
-		nfo.Imports = append(nfo.Imports, Import{Path: path})
-	}
-}
-func (nfo *Info) File(name string) *File {
-	for i, file := range nfo.Files {
-		if name == file.Name {
-			return &nfo.Files[i]
-		}
-	}
-	return nil
-}
-func (nfo *Info) AddFile(name string, id ws.Id) {
-	if nfo.File(name) == nil {
-		nfo.Files = append(nfo.Files, File{Name: name, Id: id})
-	}
-}
-func (nfo *Info) AddUse(id ws.Id) {
-	for _, i := range nfo.Uses {
-		if i == id {
-			return
-		}
-	}
-	nfo.Uses = append(nfo.Uses, id)
-}
-
 func Scan(p *Pkg, r *ws.Res) error {
 	fmt.Println("scan pkg", p.Path)
 	p.Flag ^= HasSource | HasTest | HasXTest
@@ -69,13 +18,12 @@ func Scan(p *Pkg, r *ws.Res) error {
 	if src != nil {
 		p.Flag |= HasSource
 		p.Name, err = parse(p, src, "")
-		if p.Src != nil {
-			src.Uses = p.Src.Uses
-		}
+		src.Merge(p.Src)
 	}
 	if test != nil {
 		p.Flag |= HasTest
 		p.Name, err = parse(p, test, p.Name)
+		test.Merge(p.Test)
 	}
 	p.Src, p.Test = src, test
 	p.Flag |= Scanned
@@ -94,12 +42,12 @@ func getinfo(p *Pkg, r *ws.Res) (src, test *Info) {
 				if test == nil {
 					test = &Info{}
 				}
-				test.AddFile(c.Name, c.Id)
+				test.AddFile(c.Id, c.Name)
 			} else {
 				if src == nil {
 					src = &Info{}
 				}
-				src.AddFile(c.Name, c.Id)
+				src.AddFile(c.Id, c.Name)
 			}
 		}
 	}

@@ -30,9 +30,12 @@ type Pkg struct {
 	sync.Mutex
 	Id   ws.Id
 	Path string
+	Dir  string
 	Name string
 	Flag PkgFlag
 	Pkgs []*Pkg
+	Src  *Info
+	Test *Info
 }
 
 type Src struct {
@@ -152,6 +155,9 @@ func (s *Src) work(p *Pkg, r *ws.Res) error {
 	Scan(p, r)
 	if p.Flag&Recursing != 0 {
 		for _, c := range p.Pkgs {
+			if c.Flag&Watching != 0 {
+				continue
+			}
 			c.Flag |= Watching | Recursing
 			cr := getchild(r, c.Id)
 			if cr != nil {

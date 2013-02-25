@@ -52,14 +52,26 @@ func (nfo *Info) AddFile(name string, id ws.Id) {
 		nfo.Files = append(nfo.Files, File{Name: name, Id: id})
 	}
 }
+func (nfo *Info) AddUse(id ws.Id) {
+	for _, i := range nfo.Uses {
+		if i == id {
+			return
+		}
+	}
+	nfo.Uses = append(nfo.Uses, id)
+}
 
 func Scan(p *Pkg, r *ws.Res) error {
+	fmt.Println("scan pkg", p.Path)
 	p.Flag ^= HasSource | HasTest | HasXTest
 	src, test := getinfo(p, r)
 	var err error
 	if src != nil {
 		p.Flag |= HasSource
 		p.Name, err = parse(p, src, "")
+		if p.Src != nil {
+			src.Uses = p.Src.Uses
+		}
 	}
 	if test != nil {
 		p.Flag |= HasTest
@@ -67,11 +79,14 @@ func Scan(p *Pkg, r *ws.Res) error {
 	}
 	p.Src, p.Test = src, test
 	p.Flag |= Scanned
-	fmt.Println("scanned pkg", p.Path)
 	return err
 }
 func getinfo(p *Pkg, r *ws.Res) (src, test *Info) {
 	r.Lock()
+	defer r.Unlock()
+	if r.Dir == nil {
+		return
+	}
 	p.Dir = r.Dir.Path
 	for _, c := range r.Children {
 		if c.Flag&(ws.FlagDir|FlagGo) == FlagGo {
@@ -88,7 +103,6 @@ func getinfo(p *Pkg, r *ws.Res) (src, test *Info) {
 			}
 		}
 	}
-	r.Unlock()
 	return
 }
 func parse(p *Pkg, info *Info, name string) (string, error) {

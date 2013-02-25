@@ -16,8 +16,9 @@ type PkgFlag uint64
 const (
 	_ PkgFlag = 1 << iota
 
-	Watching
+	Working
 	Recursing
+	Watching
 
 	Found   // Path, Dir
 	Scanned // Name, Src, Test
@@ -45,21 +46,25 @@ type Src struct {
 	sync.RWMutex
 	srcids []ws.Id
 	pkgs   map[ws.Id]*Pkg
+	lookup map[string]*Pkg
 	queue  *ws.Throttle
 	rmchan chan *ws.Res
 	w      *ws.Ws
 }
 
 func New(srcids []ws.Id) *Src {
-	return &Src{
+	s := &Src{
 		srcids: srcids,
 		pkgs:   make(map[ws.Id]*Pkg),
+		lookup: make(map[string]*Pkg),
 		queue: &ws.Throttle{
-			Tickers: make(chan *time.Ticker, 1),
+			Tickers: make(chan *time.Ticker, 2),
 			Ticks:   time.Second / 2,
 		},
 		rmchan: make(chan *ws.Res),
 	}
+	s.lookup["C"] = &Pkg{Flag: Found | Scanned, Path: "C", Name: "C"}
+	return s
 }
 
 func (s *Src) Filter(r *ws.Res) bool {
@@ -129,8 +134,7 @@ func (s *Src) change(r *ws.Res) {
 	defer s.Unlock()
 	p := s.getorcreate(r)
 	if p.Flag&Watching != 0 {
-		// enqueue build and test run
-		Scan(p, r)
+		workAll(s, p, r)
 	}
 }
 func (s *Src) remove(r *ws.Res) {
@@ -142,20 +146,24 @@ func (s *Src) remove(r *ws.Res) {
 	}
 	// clean up p
 	delete(s.pkgs, p.Id)
+	delete(s.lookup, p.Path)
 }
 func (s *Src) getorcreate(r *ws.Res) *Pkg {
 	p, ok := s.pkgs[r.Id]
 	if !ok {
 		p = &Pkg{Id: r.Id, Dir: r.Path()}
-		s.pkgs[r.Id] = p
+		s.pkgs[p.Id] = p
 	}
 	if p.Flag&Found == 0 {
 		p.Flag |= Found
 		p.Path = importPath(r)
+		if s.lookup[p.Path] == nil {
+			s.lookup[p.Path] = p
+		}
 		if r.Parent.Parent.Flag&FlagGo != 0 {
 			pa := s.getorcreate(r.Parent)
 			if pa.Flag&Recursing != 0 {
-				p.Flag |= Watching | Recursing
+				p.Flag |= Working | Watching | Recursing
 			}
 			pa.Pkgs = append(pa.Pkgs, p)
 		}
@@ -164,7 +172,7 @@ func (s *Src) getorcreate(r *ws.Res) *Pkg {
 }
 
 func (s *Src) WorkOn(path string) error {
-	flag := Watching
+	flag := Working | Watching
 	if d, f := filepath.Split(path); f == "..." {
 		path = d
 		flag |= Recursing
@@ -187,21 +195,25 @@ func (s *Src) WorkOn(path string) error {
 	pkg.Flag |= flag
 	if s.w != nil {
 		if r := s.w.Res(pkg.Id); r != nil {
-			scanAll(pkg, r)
+			workAll(s, pkg, r)
 		}
 	}
 	return nil
 }
-func scanAll(p *Pkg, r *ws.Res) error {
+func work(s *Src, p *Pkg, r *ws.Res) {
 	Scan(p, r)
-	if p.Flag&Recursing != 0 {
+	Deps(s, p, r)
+}
+func workAll(s *Src, p *Pkg, r *ws.Res) error {
+	work(s, p, r)
+	if p.Flag&(Working|Recursing) != 0 {
 		for _, c := range p.Pkgs {
-			if c.Flag&Watching != 0 {
+			if c.Flag&(Working|Recursing) != 0 {
 				continue
 			}
-			c.Flag |= Watching | Recursing
+			c.Flag |= Working | Watching | Recursing
 			if cr := getchild(r, c.Id); cr != nil {
-				scanAll(c, cr)
+				workAll(s, c, cr)
 			}
 		}
 	}

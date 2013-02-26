@@ -42,13 +42,14 @@ func (r *Report) WaitTimeout(after time.Duration) error {
 	if r.Error != nil {
 		return r.Error
 	}
-	done := make(chan bool)
+	done := make(chan error)
 	go func() {
-		r.Wait()
-		done <- true
+		done <- r.Command.Wait()
 	}()
 	select {
-	case <-done:
+	case err := <-done:
+		r.Ended = time.Now()
+		r.Error = err
 	case <-time.After(after):
 		r.Command.Process.Kill()
 		r.Error = fmt.Errorf("timeout")

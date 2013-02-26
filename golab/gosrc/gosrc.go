@@ -211,6 +211,23 @@ func (s *Src) WorkOn(path string) error {
 func work(s *Src, p *Pkg, r *ws.Res) {
 	Scan(p, r)
 	Deps(s, p, r)
+	if p.Flag&MissingDeps != 0 {
+		return
+	}
+	if p.Src != nil {
+		if rep := Install(p); rep.Error != nil {
+			fmt.Printf("FAIL install %s %s\n", p.Path, rep.Error)
+		} else {
+			fmt.Printf("ok   install %s\n", p.Path)
+		}
+	}
+	if p.Test != nil {
+		if rep := Test(p); rep.Error != nil {
+			fmt.Printf("FAIL test    %s %s\n", p.Path, rep.Error)
+		} else {
+			fmt.Printf("ok   test    %s\n", p.Path)
+		}
+	}
 }
 func workAll(s *Src, p *Pkg, r *ws.Res) error {
 	work(s, p, r)

@@ -64,7 +64,7 @@ func New(srcids []ws.Id) *Src {
 		pkgs:   make(map[ws.Id]*Pkg),
 		lookup: make(map[string]*Pkg),
 		queue: &ws.Throttle{
-			Tickers: make(chan *time.Ticker, 2),
+			Tickers: make(chan *time.Ticker, 1),
 			Ticks:   time.Second / 2,
 		},
 		rmchan: make(chan *ws.Res),
@@ -128,9 +128,7 @@ func (s *Src) Run(w *ws.Ws) {
 	for {
 		select {
 		case t := <-s.queue.Tickers:
-			if timeout = nil; t != nil {
-				timeout = t.C
-			}
+			timeout = t.C
 		case <-timeout:
 			for _, r := range s.queue.Work() {
 				s.change(r)

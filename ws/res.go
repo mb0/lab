@@ -19,19 +19,28 @@ const (
 	FlagIgnore
 )
 
+// Skip is returned by walk visitors to prevent visiting children of the resource in context.
+var Skip = fmt.Errorf("skip")
+
+// Id identifies a workspace resource uniquely.
+// Having a fnv32 hash collision is considered a user error.
 type Id uint32
 
+// Creates a workspace id for path.
+// Path must be absolute and clean (sans trailing slash).
 func NewId(path string) Id {
 	h := fnv.New32()
 	h.Write([]byte(path))
 	return Id(h.Sum32())
 }
 
+// Dir holds the full path and child resources for a directory resource.
 type Dir struct {
 	Path     string
 	Children []*Res
 }
 
+// Res describes a workspace resource.
 type Res struct {
 	sync.Mutex
 	Id     Id
@@ -59,6 +68,7 @@ func (r *Res) path(lock bool) string {
 	return p + string(os.PathSeparator) + r.Name
 }
 
+// Path returns the full resource path.
 func (r *Res) Path() string {
 	return r.path(true)
 }
@@ -129,8 +139,6 @@ func find(l []*Res, name string) *Res {
 	}
 	return nil
 }
-
-var Skip = fmt.Errorf("skip")
 
 func walk(l []*Res, f func(*Res) error) error {
 	var err error

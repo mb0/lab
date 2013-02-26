@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package ws implements a workspace for file resources.
 package ws
 
 import (
@@ -13,10 +14,13 @@ import (
 	"sync"
 )
 
+// Watcher provides and interface for workspace watchers.
 type Watcher interface {
 	Watch(r *Res) error
 	Close() error
 }
+
+// Op describes workspace and filesystem operations or events
 type Op uint
 
 const (
@@ -32,6 +36,7 @@ const (
 	FsMask Op = 0xF0
 )
 
+// Config contains the configuration used to create new workspaces.
 type Config struct {
 	// CapHint hints the expected peak resource capacity.
 	CapHint uint
@@ -57,10 +62,12 @@ func (c *Config) filldefaullts() {
 func nilhandler(Op, *Res) {}
 func nilfilter(*Res) bool { return false }
 
+// Controller provides an interface for the watcher to modify the workspace.
 type Controller interface {
 	Control(op Op, id Id, name string) error
 }
 
+// Ws implements a workspace that manages all mounted resources.
 type Ws struct {
 	sync.RWMutex
 	config  Config
@@ -69,7 +76,7 @@ type Ws struct {
 	watcher Watcher
 }
 
-// New creates a workspace configured with c.
+// New creates a workspace with configuration c.
 func New(c Config) *Ws {
 	c.filldefaullts()
 	var name string
@@ -110,15 +117,20 @@ func (w *Ws) Mount(path string) (*Res, error) {
 	w.addAllChildren(0, r)
 	return r, nil
 }
+
+// Res returns the resource with id or nil.
 func (w *Ws) Res(id Id) *Res {
 	w.RLock()
 	defer w.RUnlock()
 	return w.all[id]
 }
-func (w *Ws) Walk(l []*Res, f func(r *Res) error) error {
+
+// Walk calls visit for all resources in list and all their descendants.
+// If the visit returns Skip for a resource its children are not visited.
+func (w *Ws) Walk(list []*Res, visit func(r *Res) error) error {
 	w.RLock()
 	defer w.RUnlock()
-	return walk(l, f)
+	return walk(list, visit)
 }
 func (w *Ws) mount(path string) (*Res, error) {
 	path = filepath.Clean(path)

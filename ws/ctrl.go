@@ -4,6 +4,7 @@
 
 package ws
 
+// ctrl implements a workspace controller.
 type ctrl Ws
 
 func (w *ctrl) Control(op Op, id Id, name string) error {

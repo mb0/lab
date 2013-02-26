@@ -11,8 +11,7 @@ import (
 )
 
 func Scan(p *Pkg, r *ws.Res) error {
-	fmt.Println("scan pkg", p.Path)
-	p.Flag ^= HasSource | HasTest | HasXTest
+	p.Flag &^= HasSource | HasTest | HasXTest
 	src, test := getinfo(p, r)
 	var err error
 	if src != nil {

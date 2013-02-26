@@ -26,8 +26,8 @@ func Deps(src *Src, pkg *Pkg, r *ws.Res) {
 			fmt.Printf("missing %v\n", missing)
 		}
 	} else {
-		pkg.Flag ^= MissingDeps
-		fmt.Printf("all deps found %s\n", pkg.Path)
+		// all deps found
+		pkg.Flag &^= MissingDeps
 	}
 }
 

@@ -130,21 +130,29 @@ func (s *Src) Run(w *ws.Ws) {
 		case t := <-s.queue.Tickers:
 			timeout = t.C
 		case <-timeout:
-			for _, r := range s.queue.Work() {
-				s.change(r)
-			}
+			s.change(s.queue.Work())
 		case r := <-s.rmchan:
 			s.queue.Delete(r)
 			s.remove(r)
 		}
 	}
 }
-func (s *Src) change(r *ws.Res) {
+func (s *Src) change(batch []*ws.Res) {
+	dirty := make(map[ws.Id]bool)
 	s.Lock()
-	defer s.Unlock()
-	p := s.getorcreate(r)
-	if p.Flag&Watching != 0 {
-		workAll(s, p, r)
+	for _, r := range batch {
+		p := s.getorcreate(r)
+		if p.Flag&Watching != 0 {
+			workAll(s, p, r, dirty)
+		}
+	}
+	s.Unlock()
+	for id, dirt := range dirty {
+		if dirt {
+			if r := s.w.Res(id); r != nil {
+				s.queue.Add(r)
+			}
+		}
 	}
 }
 func (s *Src) remove(r *ws.Res) {
@@ -205,27 +213,45 @@ func (s *Src) WorkOn(path string) error {
 	pkg.Flag |= flag
 	if s.w != nil {
 		if r := s.w.Res(pkg.Id); r != nil {
-			workAll(s, pkg, r)
+			workAll(s, pkg, r, make(map[ws.Id]bool))
 		}
 	}
 	return nil
 }
 
-func work(s *Src, p *Pkg, r *ws.Res) {
+func work(s *Src, p *Pkg, r *ws.Res, dirty map[ws.Id]bool) {
 	Scan(p, r)
+	isretry := p.Flag&MissingDeps != 0
 	Deps(s, p, r)
 	if p.Flag&MissingDeps != 0 {
+		if isretry {
+			fmt.Printf("package %s missing dependencies\n", p.Path)
+			return
+		}
+		dirty[p.Id] = true
 		return
 	}
+	dirty[p.Id] = false
+	var uses []ws.Id
 	if p.Src != nil {
-		fmt.Println(Install(p))
+		rep := Install(p)
+		fmt.Println(rep)
+		if rep.Error != nil {
+			return
+		}
+		uses = p.Src.Uses
 	}
 	if p.Test != nil {
 		fmt.Println(Test(p))
 	}
+	for _, id := range uses {
+		if _, ok := dirty[id]; !ok {
+			dirty[id] = true
+		}
+	}
 }
-func workAll(s *Src, p *Pkg, r *ws.Res) error {
-	work(s, p, r)
+func workAll(s *Src, p *Pkg, r *ws.Res, dirty map[ws.Id]bool) error {
+	work(s, p, r, dirty)
 	if p.Flag&(Working|Recursing) != 0 {
 		for _, c := range p.Pkgs {
 			if c.Flag&(Working|Recursing) != 0 {
@@ -233,7 +259,7 @@ func workAll(s *Src, p *Pkg, r *ws.Res) error {
 			}
 			c.Flag |= Working | Watching | Recursing
 			if cr := getchild(r, c.Id); cr != nil {
-				workAll(s, c, cr)
+				workAll(s, c, cr, dirty)
 			}
 		}
 	}

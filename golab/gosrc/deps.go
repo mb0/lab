@@ -5,7 +5,6 @@
 package gosrc
 
 import (
-	"fmt"
 	"github.com/mb0/lab/ws"
 )
 
@@ -21,14 +20,7 @@ func Deps(src *Src, pkg *Pkg, r *ws.Res) {
 	missing := make(map[string]struct{}, 100)
 	deps(src, pkg, missing)
 	if len(missing) > 0 {
-		// if this is not already a retry
-		if pkg.Flag&MissingDeps == 0 {
-			// enqueue for later processing
-			pkg.Flag |= MissingDeps
-			src.queue.Add(r)
-		} else {
-			fmt.Printf("missing %v\n", missing)
-		}
+		pkg.Flag |= MissingDeps
 	} else {
 		// all deps found
 		pkg.Flag &^= MissingDeps

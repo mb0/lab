@@ -10,12 +10,24 @@ func Deps(src *Src, pkg *Pkg, r *ws.Res) {
 		// not scanned
 		return
 	}
+
+	if pkg.Src == nil {
+		return
+	}
 	missing := make(map[string]struct{}, 100)
 	deps(src, pkg, missing)
 	if len(missing) > 0 {
-		// enqueue for later processing
-		fmt.Printf("missing %v\n", missing)
-		src.queue.Add(r)
+		// if this is not already a retry
+		if pkg.Flag&MissingDeps == 0 {
+			// enqueue for later processing
+			pkg.Flag |= MissingDeps
+			src.queue.Add(r)
+		} else {
+			fmt.Printf("missing %v\n", missing)
+		}
+	} else {
+		pkg.Flag ^= MissingDeps
+		fmt.Printf("all deps found %s\n", pkg.Path)
 	}
 }
 

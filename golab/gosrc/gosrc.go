@@ -26,6 +26,8 @@ const (
 	HasSource
 	HasTest
 	HasXTest
+
+	MissingDeps
 )
 
 type Pkg struct {
@@ -65,6 +67,12 @@ func New(srcids []ws.Id) *Src {
 	}
 	s.lookup["C"] = &Pkg{Flag: Found | Scanned, Path: "C", Name: "C"}
 	return s
+}
+
+func (s *Src) Pkg(id ws.Id) *Pkg {
+	s.Lock()
+	defer s.Unlock()
+	return s.pkgs[id]
 }
 
 func (s *Src) Filter(r *ws.Res) bool {

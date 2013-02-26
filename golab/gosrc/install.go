@@ -56,6 +56,23 @@ func (r *Report) WaitTimeout(after time.Duration) error {
 	return r.Error
 }
 
+var (
+	failmsg = "\x1b[41mFAIL\x1b[0m"
+	okmsg   = "\x1b[42mok  \x1b[0m"
+)
+
+func (r *Report) String() string {
+	if r.Command == nil || len(r.Command.Args) < 2 {
+		return "<empty report>"
+	}
+	mode := r.Command.Args[1]
+	path := r.Command.Args[len(r.Command.Args)-1]
+	if r.Error != nil {
+		return fmt.Sprintf("%s %-7s %s %s", failmsg, mode, path, r.Error)
+	}
+	return fmt.Sprintf("%s %-7s %s", okmsg, mode, path)
+}
+
 func Install(pkg *Pkg) *Report {
 	r := gocmd("install", pkg.Path)
 	r.Start()

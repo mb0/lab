@@ -210,6 +210,7 @@ func (s *Src) WorkOn(path string) error {
 	}
 	return nil
 }
+
 func work(s *Src, p *Pkg, r *ws.Res) {
 	Scan(p, r)
 	Deps(s, p, r)
@@ -217,18 +218,10 @@ func work(s *Src, p *Pkg, r *ws.Res) {
 		return
 	}
 	if p.Src != nil {
-		if rep := Install(p); rep.Error != nil {
-			fmt.Printf("FAIL install %s %s\n", p.Path, rep.Error)
-		} else {
-			fmt.Printf("ok   install %s\n", p.Path)
-		}
+		fmt.Println(Install(p))
 	}
 	if p.Test != nil {
-		if rep := Test(p); rep.Error != nil {
-			fmt.Printf("FAIL test    %s %s\n", p.Path, rep.Error)
-		} else {
-			fmt.Printf("ok   test    %s\n", p.Path)
-		}
+		fmt.Println(Test(p))
 	}
 }
 func workAll(s *Src, p *Pkg, r *ws.Res) error {

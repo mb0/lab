@@ -23,26 +23,24 @@ const (
 	Working
 	Recursing
 	Watching
-
-	Found   // Path, Dir
-	Scanned // Name, Src, Test
-
-	HasSource
-	HasTest
-	HasXTest
-
 	MissingDeps
 )
 
 type Pkg struct {
 	sync.Mutex
 	Id   ws.Id
+	Dir  string
 	Flag PkgFlag
 	Pkgs []*Pkg
 
+	// Valid
 	Path string
-	Dir  string
 
+	// Found
+	Res *ws.Res
+
+	// Scanned
+	Scan time.Time
 	Name string
 	Src  *Info
 	Test *Info
@@ -55,7 +53,6 @@ type Src struct {
 	lookup map[string]*Pkg
 	queue  *ws.Throttle
 	rmchan chan *ws.Res
-	w      *ws.Ws
 }
 
 func New(srcids []ws.Id) *Src {
@@ -66,7 +63,8 @@ func New(srcids []ws.Id) *Src {
 		queue:  ws.NewThrottle(time.Second),
 		rmchan: make(chan *ws.Res),
 	}
-	s.lookup["C"] = &Pkg{Flag: Found | Scanned, Path: "C", Name: "C"}
+	s.lookup["C"] = &Pkg{Path: "C", Name: "C", Scan: time.Now()}
+	go s.run()
 	return s
 }
 
@@ -119,8 +117,7 @@ func (s *Src) Handle(op ws.Op, r *ws.Res) {
 	return
 }
 
-func (s *Src) Run(w *ws.Ws) {
-	s.w = w
+func (s *Src) run() {
 	var timeout <-chan time.Time
 	for {
 		select {
@@ -135,27 +132,23 @@ func (s *Src) Run(w *ws.Ws) {
 	}
 }
 func (s *Src) change(batch []*ws.Res) {
-	dirty := make(map[ws.Id]bool)
+	dirty := make(map[ws.Id]*Pkg)
 	s.Lock()
 	for _, r := range batch {
-		p := s.getorcreate(r)
+		p := s.getorcreateres(r)
 		if p.Flag&Watching != 0 {
-			workAll(s, p, r, dirty)
+			workAll(s, p, dirty)
 		}
 	}
-	for id, dirt := range dirty {
-		if dirt {
-			if r := s.w.Res(id); r != nil {
-				workAll(s, s.getorcreate(r), r, dirty)
-			}
+	for _, dirt := range dirty {
+		if dirt != nil {
+			workAll(s, dirt, dirty)
 		}
 	}
 	s.Unlock()
-	for id, dirt := range dirty {
-		if dirt {
-			if r := s.w.Res(id); r != nil {
-				s.queue.Add(r)
-			}
+	for _, dirt := range dirty {
+		if dirt != nil {
+			s.queue.Add(dirt.Res)
 		}
 	}
 }
@@ -169,28 +162,33 @@ func (s *Src) remove(r *ws.Res) {
 	// clean up p
 	delete(s.pkgs, p.Id)
 	delete(s.lookup, p.Path)
+	// TODO clean up uses in dependencies
 }
-func (s *Src) getorcreate(r *ws.Res) *Pkg {
-	p, ok := s.pkgs[r.Id]
+func (s *Src) getorcreate(id ws.Id, dir string) *Pkg {
+	pkg, ok := s.pkgs[id]
 	if !ok {
-		p = &Pkg{Id: r.Id, Dir: r.Path()}
-		s.pkgs[p.Id] = p
+		pkg = &Pkg{Id: id, Dir: dir}
+		s.pkgs[id] = pkg
 	}
-	if p.Flag&Found == 0 {
-		p.Flag |= Found
-		p.Path = importPath(r)
-		if s.lookup[p.Path] == nil {
-			s.lookup[p.Path] = p
+	return pkg
+}
+func (s *Src) getorcreateres(r *ws.Res) *Pkg {
+	pkg := s.getorcreate(r.Id, r.Path())
+	if pkg.Res == nil {
+		pkg.Res = r
+		pkg.Path = importPath(r)
+		if s.lookup[pkg.Path] == nil {
+			s.lookup[pkg.Path] = pkg
 		}
 		if r.Parent.Parent.Flag&FlagGo != 0 {
-			pa := s.getorcreate(r.Parent)
+			pa := s.getorcreateres(r.Parent)
 			if pa.Flag&Recursing != 0 {
-				p.Flag |= Working | Watching | Recursing
+				pkg.Flag |= Working | Watching | Recursing
 			}
-			pa.Pkgs = append(pa.Pkgs, p)
+			pa.Pkgs = append(pa.Pkgs, pkg)
 		}
 	}
-	return p
+	return pkg
 }
 
 func (s *Src) WorkOn(path string) error {
@@ -206,36 +204,27 @@ func (s *Src) WorkOn(path string) error {
 	id := ws.NewId(p)
 	s.Lock()
 	defer s.Unlock()
-	pkg := s.pkgs[id]
-	if pkg == nil {
-		pkg := &Pkg{Flag: flag}
-		pkg.Id = id
-		s.pkgs[id] = pkg
-		fmt.Printf("watching %s\n", p)
-		return nil
-	}
+	pkg := s.getorcreate(id, p)
 	pkg.Flag |= flag
-	if s.w != nil {
-		if r := s.w.Res(pkg.Id); r != nil {
-			workAll(s, pkg, r, make(map[ws.Id]bool))
-		}
+	if pkg.Res != nil {
+		workAll(s, pkg, make(map[ws.Id]*Pkg))
 	}
 	return nil
 }
 
-func work(s *Src, p *Pkg, r *ws.Res, dirty map[ws.Id]bool) {
-	Scan(p, r)
+func work(s *Src, p *Pkg, dirty map[ws.Id]*Pkg) {
+	Scan(p)
 	isretry := p.Flag&MissingDeps != 0
-	Deps(s, p, r)
+	Deps(s, p)
 	if p.Flag&MissingDeps != 0 {
 		if isretry {
 			fmt.Printf("package %s missing dependencies\n", p.Path)
 			return
 		}
-		dirty[p.Id] = true
+		dirty[p.Id] = p
 		return
 	}
-	dirty[p.Id] = false
+	dirty[p.Id] = nil
 	var uses []ws.Id
 	if p.Src != nil {
 		rep := Install(p)
@@ -250,29 +239,19 @@ func work(s *Src, p *Pkg, r *ws.Res, dirty map[ws.Id]bool) {
 	}
 	for _, id := range uses {
 		if _, ok := dirty[id]; !ok {
-			dirty[id] = true
+			dirty[id] = s.pkgs[id]
 		}
 	}
 }
-func workAll(s *Src, p *Pkg, r *ws.Res, dirty map[ws.Id]bool) error {
-	work(s, p, r, dirty)
+func workAll(s *Src, p *Pkg, dirty map[ws.Id]*Pkg) error {
+	work(s, p, dirty)
 	if p.Flag&(Working|Recursing) != 0 {
 		for _, c := range p.Pkgs {
-			if c.Flag&(Working|Recursing) != 0 {
+			if c.Res == nil || c.Flag&(Working|Recursing) != 0 {
 				continue
 			}
 			c.Flag |= Working | Watching | Recursing
-			if cr := getchild(r, c.Id); cr != nil {
-				workAll(s, c, cr, dirty)
-			}
-		}
-	}
-	return nil
-}
-func getchild(r *ws.Res, id ws.Id) *ws.Res {
-	for _, c := range r.Children {
-		if c.Id == id {
-			return c
+			workAll(s, c, dirty)
 		}
 	}
 	return nil

@@ -10,36 +10,33 @@ import (
 	"go/token"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mb0/lab/ws"
 )
 
-func Scan(p *Pkg, r *ws.Res) error {
-	p.Flag &^= HasSource | HasTest | HasXTest
-	src, test := getinfo(p, r)
+func Scan(p *Pkg) error {
+	src, test := getinfo(p)
 	var err error
 	if src != nil {
-		p.Flag |= HasSource
 		p.Name, err = parse(p, src, "")
 		src.Merge(p.Src)
 	}
 	if test != nil {
-		p.Flag |= HasTest
 		p.Name, err = parse(p, test, p.Name)
 		test.Merge(p.Test)
 	}
-	p.Src, p.Test = src, test
-	p.Flag |= Scanned
+	p.Scan, p.Src, p.Test = time.Now(), src, test
 	return err
 }
-func getinfo(p *Pkg, r *ws.Res) (src, test *Info) {
-	r.Lock()
-	defer r.Unlock()
-	if r.Dir == nil {
+func getinfo(p *Pkg) (src, test *Info) {
+	p.Res.Lock()
+	defer p.Res.Unlock()
+	if p.Res.Dir == nil {
 		return
 	}
-	p.Dir = r.Dir.Path
-	for _, c := range r.Children {
+	p.Dir = p.Res.Dir.Path
+	for _, c := range p.Res.Children {
 		if c.Flag&(ws.FlagDir|FlagGo) == FlagGo {
 			if strings.HasSuffix(c.Name, "_test.go") {
 				if test == nil {
@@ -66,13 +63,11 @@ func parse(p *Pkg, info *Info, name string) (string, error) {
 			lasterr, file.Err = err, err
 			continue
 		}
-		var ok, xtest bool
-		if name, ok, xtest = checkname(f.Name.Name, name); !ok {
+		var ok bool
+		if name, ok = checkname(f.Name.Name, name); !ok {
 			lasterr = fmt.Errorf("package name err: %s %s", f.Name.Name, name)
 			file.Err = lasterr
 			continue
-		} else if xtest {
-			p.Flag |= HasXTest
 		}
 		for _, s := range f.Imports {
 			info.AddImport(s.Path.Value[1 : len(s.Path.Value)-1])
@@ -80,14 +75,12 @@ func parse(p *Pkg, info *Info, name string) (string, error) {
 	}
 	return name, lasterr
 }
-func checkname(name string, now string) (string, bool, bool) {
-	var xtest bool
+func checkname(name string, now string) (string, bool) {
 	if strings.HasSuffix(name, "_test") {
-		xtest = true
 		name = name[:len(name)-5]
 	}
 	if now == "" || name == now {
-		return name, name != "", xtest
+		return name, name != ""
 	}
-	return now, false, xtest
+	return now, false
 }

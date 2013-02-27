@@ -50,7 +50,6 @@ func main() {
 		Handler: handler,
 	})
 	defer w.Close()
-	go src.Run(w)
 	for i, err := range ws.MountAll(w, dirs) {
 		if err != nil {
 			fmt.Printf("error mounting %s: %s\n", dirs[i], err)

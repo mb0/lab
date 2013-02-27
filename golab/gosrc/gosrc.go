@@ -63,10 +63,7 @@ func New(srcids []ws.Id) *Src {
 		srcids: srcids,
 		pkgs:   make(map[ws.Id]*Pkg),
 		lookup: make(map[string]*Pkg),
-		queue: &ws.Throttle{
-			Tickers: make(chan *time.Ticker, 1),
-			Ticks:   time.Second / 2,
-		},
+		queue:  ws.NewThrottle(time.Second),
 		rmchan: make(chan *ws.Res),
 	}
 	s.lookup["C"] = &Pkg{Flag: Found | Scanned, Path: "C", Name: "C"}
@@ -144,6 +141,13 @@ func (s *Src) change(batch []*ws.Res) {
 		p := s.getorcreate(r)
 		if p.Flag&Watching != 0 {
 			workAll(s, p, r, dirty)
+		}
+	}
+	for id, dirt := range dirty {
+		if dirt {
+			if r := s.w.Res(id); r != nil {
+				workAll(s, s.getorcreate(r), r, dirty)
+			}
 		}
 	}
 	s.Unlock()

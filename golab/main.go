@@ -17,55 +17,61 @@ import (
 )
 
 var workpaths = flag.String("work", "./...", "path list of active packages. defaults to cwd")
-var dirs = build.Default.SrcDirs()
-var src = gosrc.New(ids(dirs))
+
+var modules []func()
+var lab = &struct {
+	dirs []string
+	src  *gosrc.Src
+	ws   *ws.Ws
+}{}
 
 func filter(r *ws.Res) bool {
 	if len(r.Name) > 0 && r.Name[0] == '.' {
 		return true
 	}
-	return src.Filter(r)
+	return lab.src.Filter(r)
 }
 func handler(op ws.Op, r *ws.Res) {
 	if r.Flag&ws.FlagIgnore != 0 {
 		return
 	}
-	src.Handle(op, r)
-}
-func ids(paths []string) []ws.Id {
-	ids := make([]ws.Id, 0, len(paths))
-	for _, p := range paths {
-		ids = append(ids, ws.NewId(p))
-	}
-	return ids
+	lab.src.Handle(op, r)
 }
 func main() {
 	flag.Parse()
-	initwork(*workpaths)
-	fmt.Printf("starting lab for %v\n", dirs)
-	w := ws.New(ws.Config{
+	lab.dirs = build.Default.SrcDirs()
+	ids := make([]ws.Id, 0, len(lab.dirs))
+	for _, d := range lab.dirs {
+		ids = append(ids, ws.NewId(d))
+	}
+	lab.src = gosrc.New(ids)
+	lab.src.SignalReports(func(r *gosrc.Report) {
+		fmt.Println(r)
+	})
+	lab.ws = ws.New(ws.Config{
 		CapHint: 8000,
 		Watcher: ws.NewInotify,
 		Filter:  filter,
 		Handler: handler,
 	})
-	defer w.Close()
-	for i, err := range ws.MountAll(w, dirs) {
-		if err != nil {
-			fmt.Printf("error mounting %s: %s\n", dirs[i], err)
-		}
-	}
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, os.Kill)
-	<-c
-}
-func initwork(paths string) {
-	list := filepath.SplitList(paths)
-	for _, p := range list {
-		err := src.WorkOn(p)
+	defer lab.ws.Close()
+	for _, p := range filepath.SplitList(*workpaths) {
+		err := lab.src.WorkOn(p)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 	}
+	fmt.Println("starting lab for:", lab.dirs)
+	for i, err := range ws.MountAll(lab.ws, lab.dirs) {
+		if err != nil {
+			fmt.Printf("error mounting %s: %s\n", lab.dirs[i], err)
+		}
+	}
+	for _, module := range modules {
+		go module()
+	}
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, os.Kill)
+	<-c
 }

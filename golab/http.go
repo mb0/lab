@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/mb0/lab/golab/gosrc"
 	"github.com/mb0/lab/golab/hub"
 )
 
@@ -18,9 +19,8 @@ var (
 )
 
 func router(h *hub.Hub, m hub.Msg, id hub.Id) {
-	log.Printf("route msg %s from %x\n", m.Head, id)
 	// echo messages
-	h.Send(hub.Envelope{hub.Router, id, m})
+	h.SendMsg(m, id)
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -41,16 +41,26 @@ func init() {
 	if !*httpstart {
 		return
 	}
+	modules = append(modules, mainhttp)
+}
+
+func mainhttp() {
 	h := hub.New(router)
+	lab.src.SignalReports(func(r *gosrc.Report) {
+		m, err := hub.Marshal("report", r)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		h.SendMsg(m, hub.Group)
+	})
 	http.Handle("/ws", h)
 	http.HandleFunc("/", index)
-	go func() {
-		log.Printf("starting http://%s/\n", *httpaddr)
-		err := http.ListenAndServe(*httpaddr, nil)
-		if err != nil {
-			log.Fatalf("http %s\n", err)
-		}
-	}()
+	log.Printf("starting http://%s/\n", *httpaddr)
+	err := http.ListenAndServe(*httpaddr, nil)
+	if err != nil {
+		log.Fatalf("http %s\n", err)
+	}
 }
 
 var indexbytes = []byte(`<!DOCTYPE html>

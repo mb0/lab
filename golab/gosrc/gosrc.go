@@ -53,6 +53,8 @@ type Src struct {
 	lookup map[string]*Pkg
 	queue  *ws.Throttle
 	rmchan chan *ws.Res
+
+	reportsignal []func(*Report)
 }
 
 func New(srcids []ws.Id) *Src {
@@ -72,6 +74,12 @@ func (s *Src) Pkg(id ws.Id) *Pkg {
 	s.Lock()
 	defer s.Unlock()
 	return s.pkgs[id]
+}
+
+func (s *Src) SignalReports(f func(*Report)) {
+	s.Lock()
+	defer s.Unlock()
+	s.reportsignal = append(s.reportsignal, f)
 }
 
 func (s *Src) Filter(r *ws.Res) bool {
@@ -228,14 +236,19 @@ func work(s *Src, p *Pkg, dirty map[ws.Id]*Pkg) {
 	var uses []ws.Id
 	if p.Src != nil {
 		rep := Install(p)
-		fmt.Println(rep)
+		for _, f := range s.reportsignal {
+			f(rep)
+		}
 		if rep.Err != nil {
 			return
 		}
 		uses = p.Src.Uses
 	}
 	if p.Test != nil {
-		fmt.Println(Test(p))
+		rep := Test(p)
+		for _, f := range s.reportsignal {
+			f(rep)
+		}
 	}
 	for _, id := range uses {
 		if _, ok := dirty[id]; !ok {

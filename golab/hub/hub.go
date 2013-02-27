@@ -18,11 +18,22 @@ const (
 
 type Msg struct {
 	Head string
-	Data json.RawMessage
+	Data *json.RawMessage `json:",omitempty"`
+}
+
+func Marshal(head string, v interface{}) (m Msg, err error) {
+	var data []byte
+	data, err = json.Marshal(v)
+	if err != nil {
+		return
+	}
+	m.Head = head
+	m.Data = (*json.RawMessage)(&data)
+	return
 }
 
 func (m *Msg) Unmarshal(v interface{}) error {
-	return json.Unmarshal([]byte(m.Data), v)
+	return json.Unmarshal([]byte(*m.Data), v)
 }
 
 var (
@@ -78,19 +89,28 @@ func (h *Hub) run() {
 	}
 }
 func (h *Hub) sendto(msg Msg, to Id) {
-	if to&Group != 0 {
-		for _, id := range h.groups[to] {
-			h.sendto(msg, id)
+	if to&Group == 0 {
+		if c, ok := h.conns[to]; ok {
+			c.send <- msg
 		}
 		return
 	}
-	if c, ok := h.conns[to]; ok {
-		c.send <- msg
+	if to^Group == 0 {
+		for _, c := range h.conns {
+			c.send <- msg
+		}
+		return
+	}
+	for _, id := range h.groups[to] {
+		h.sendto(msg, id)
 	}
 }
 
 func (h *Hub) Send(e Envelope) {
 	h.send <- e
+}
+func (h *Hub) SendMsg(m Msg, to Id) {
+	h.send <- Envelope{Router, to, m}
 }
 
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {

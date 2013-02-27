@@ -236,7 +236,7 @@ func work(s *Src, p *Pkg, r *ws.Res, dirty map[ws.Id]bool) {
 	if p.Src != nil {
 		rep := Install(p)
 		fmt.Println(rep)
-		if rep.Error != nil {
+		if rep.Err != nil {
 			return
 		}
 		uses = p.Src.Uses

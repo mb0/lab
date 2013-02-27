@@ -7,7 +7,6 @@ package gosrc
 import (
 	"bytes"
 	"fmt"
-	"os/exec"
 	"time"
 )
 
@@ -18,56 +17,17 @@ var (
 )
 
 type Report struct {
-	Command *exec.Cmd
-	Started time.Time
-	Ended   time.Time
-	Error   error
-	Stdout  bytes.Buffer
-	Stderr  bytes.Buffer
-}
-
-func (r *Report) Start() error {
-	r.Started = time.Now()
-	r.Error = r.Command.Start()
-	return r.Error
-}
-func (r *Report) Wait() error {
-	if r.Error != nil {
-		return r.Error
-	}
-	r.Error = r.Command.Wait()
-	r.Ended = time.Now()
-	return r.Error
-}
-func (r *Report) WaitTimeout(after time.Duration) error {
-	if r.Error != nil {
-		return r.Error
-	}
-	done := make(chan error)
-	go func() {
-		done <- r.Command.Wait()
-	}()
-	select {
-	case err := <-done:
-		r.Ended = time.Now()
-		r.Error = err
-	case <-time.After(after):
-		r.Command.Process.Kill()
-		r.Error = fmt.Errorf("timeout")
-	}
-	return r.Error
+	Mode, Path string
+	Start      time.Time
+	Err        error
+	out, err   bytes.Buffer
 }
 
 func (r *Report) String() string {
-	if r.Command == nil || len(r.Command.Args) < 2 {
-		return "<empty report>"
-	}
-	mode := r.Command.Args[1]
-	path := r.Command.Args[len(r.Command.Args)-1]
-	if r.Error != nil {
+	if r.Err != nil {
 		var buf bytes.Buffer
-		fmt.Fprintf(&buf, "%s %-7s %s %s", failmsg, mode, path, r.Error)
-		for _, b := range []*bytes.Buffer{&r.Stdout, &r.Stderr} {
+		fmt.Fprintf(&buf, "%s %-7s %s %s", failmsg, r.Mode, r.Path, r.Err)
+		for _, b := range []*bytes.Buffer{&r.out, &r.err} {
 			for l := line(b); l != nil; l = line(b) {
 				if len(l) == 0 || l[0] == '#' {
 					continue
@@ -78,7 +38,7 @@ func (r *Report) String() string {
 		}
 		return buf.String()
 	}
-	return fmt.Sprintf("%s %-7s %s", okmsg, mode, path)
+	return fmt.Sprintf("%s %-7s %s", okmsg, r.Mode, r.Path)
 }
 
 func line(buf *bytes.Buffer) []byte {

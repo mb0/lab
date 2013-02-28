@@ -3,56 +3,101 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(function() {
-function newchild(pa, tag, inner) {
-	var ele = document.createElement(tag);
-	pa.appendChild(ele);
-	if (inner) ele.innerHTML = inner;
-	return ele;
-}
-function pad(str, l) {
-	while (str.length < l) {
-		str = "         " + str;
+require.config({
+	paths: {
+		json2: 'libs/json2.min',
+		zepto: 'libs/zepto.min',
+		underscore: 'libs/underscore',
+		backbone: 'libs/backbone'
+	},
+	shim: {
+		underscore: {exports: "_"},
+		zepto: {exports: "$"},
+		backbone: {exports: "Backbone", deps: ["underscore", "zepto"]},
 	}
-	return str.slice(str.length-l);
-}
-function addreport(cont, r) {
-	var c = newchild(cont, "div");
-	header = '<span class="mode">'+r.Mode+'</span> '+ r.Path;
-	if (r.Err != null) {
-		c.setAttribute("class", "report fail");
-		header = '<span class="status">FAIL</span> '+ header +": "+ r.Err;
-	} else {
-		c.setAttribute("class", "report ok");
-		header = '<span class="status">ok</span> '+ header;
+});
+
+define(["base", "app", "conn"], function(base, app, conn) {
+
+$(document).on("click", "a", function(e) {
+	e.preventDefault();
+	Backbone.history.navigate(e.target.getAttribute("href"), {trigger: true});
+});
+
+var Html = Backbone.View.extend({
+	tagName: "div",
+	constructor: function(text, opts) {
+		this.text = text;
+		Backbone.View.prototype.constructor.call(this, opts);
+		this.render();
+	},
+	render: function() {
+		this.$el.html(this.text);
+		return this;
+	},
+});
+var Report = Backbone.Model.extend({
+	getoutput: function() {
+		var out = (this.get("Stdout") || "") + (this.get("Stderr") || "");
+		return out.replace(/(^(#.*|\S)\n|\n#[^\n]*)/g, "");
+	},
+	getstatus: function() {
+		return !this.get("Err") ? "ok" : "fail";
+	},
+});
+var Reports = Backbone.Collection.extend({model:Report});
+var ReportListItem = base.ListItemView.extend({
+	template1: _.template([
+		'<div class="report <%- getstatus() %>">',
+		'<header>',
+		'<span class="status"><%- getstatus().toUpperCase() %></span> ',
+		'<span class="mode"><%= get("Mode") %></span> ',
+		'<%= get("Path") %> <%= get("Err") || "" %>',
+		'</header>',
+		'<% var o; if (o = getoutput()) { %><pre><%= o %></pre><% } %>',
+		'</div>',
+	].join('')),
+	template: function(r) {
+		console.log("addreport", r);
+		return this.template1(r);
+	},
+});
+var ReportList = base.ListView.extend({
+	itemView: ReportListItem
+});
+var ReportView = base.Page.extend({
+	initialize: function() {
+		this.reports = new Reports();
+		this.listview = new ReportList({collection:this.reports});
+		this.listenTo(conn, "msg:report", this.addReport);
+		this.render();
+	},
+	render: function() {
+		this.$el.append(this.listview.render().$el);
+		return this;
+	},
+	addReport: function(data) {
+		this.reports.add(data);
 	}
-	newchild(c, "header", header);
-	var buf = [];
-	if (r.Stdout) buf.push(r.Stdout);
-	if (r.Stderr) buf.push(r.Stderr);
-	var output = buf.join("\n")
-	if (output) newchild(c, "pre", output);
-	return c;
-}
-var cont = newchild(document.body, "div");
-if (window["WebSocket"]) {
-	var conn = new WebSocket("ws://"+ location.host+"/ws");
-	conn.onclose = function(e) {
-		newchild(cont, "div", "WebSocket closed.");
-	};
-	conn.onmessage = function(e) {
-		var msg = JSON.parse(e.data);
-		if (msg.Head == "report") {
-			addreport(cont, msg.Data);
-		} else {
-			newchild(cont, "div", e.data);
-		}
-	};
-	conn.onopen = function(e) {
-		newchild(cont, "div", "WebSocket started.");
-		conn.send('{"Head":"hi"}\n');
-	};
-} else {
-	newchild(cont, "p", "WebSockets are not supported by your browser.");
-}
+});
+
+new app.Router({tiles: new app.Tiles([
+	{id: "index", uri: "", name:"reports", view: new ReportView()},
+	{id: "about", uri: "about", name:"about", view: new Html([
+		'<pre>',
+		'go live action builds',
+		'=====================\n',
+		'&copy; 2013 Martin Schnabel. All rights reserved.',
+		'BSD-style license.\n',
+		'Other code used:',
+		' * github.com/garyburd/go-websocket (Apache License 2.0)',
+		' * Underscore, Zepto.js, Backbone.js (MIT License)',
+		' * json2.js (public domain).',
+		'</pre>'
+	].join('\n'))},
+])});
+$("#app > nav > ul").prepend("<li>golab</li>")
+
+conn.connect();
+
 });

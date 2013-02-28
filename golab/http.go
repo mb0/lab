@@ -90,7 +90,7 @@ var indexbytes = []byte(`<!DOCTYPE html>
 	<meta charset="utf-8">
 	<link href="/static/main.css" rel="stylesheet">
 </head><body>
-	<header>golab</header>
+	<div id="app"></div>
 	<script data-main="/static/main" src="/static/require.js"></script>
 </body></html>
 `)

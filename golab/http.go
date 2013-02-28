@@ -8,9 +8,11 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"path/filepath"
 
 	"github.com/mb0/lab/golab/gosrc"
 	"github.com/mb0/lab/golab/hub"
+	"github.com/mb0/lab/ws"
 )
 
 var (
@@ -54,8 +56,16 @@ func mainhttp() {
 		}
 		h.SendMsg(m, hub.Group)
 	})
+
 	http.Handle("/ws", h)
+	static := findstatic()
 	http.HandleFunc("/", index)
+	if static == "" {
+		indexbytes = []byte("cannot find client files.")
+	} else {
+		http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(static))))
+	}
+
 	log.Printf("starting http://%s/\n", *httpaddr)
 	err := http.ListenAndServe(*httpaddr, nil)
 	if err != nil {
@@ -63,87 +73,24 @@ func mainhttp() {
 	}
 }
 
+func findstatic() string {
+	for _, dir := range lab.dirs {
+		path := filepath.Join(dir, "github.com/mb0/lab/golab/static")
+		r := lab.ws.Res(ws.NewId(path))
+		if r != nil {
+			return path
+		}
+	}
+	return ""
+}
+
 var indexbytes = []byte(`<!DOCTYPE html>
 <html lang="en"><head>
-	<meta charset="utf-8">
 	<title>golab</title>
-	<style>
-	body { padding: 0; margin: 0; }
-	.report.ok, .report.ok .status {
-		background-color: green;
-	}
-	.report.fail, .report.fail .status {
-		background-color: red;
-	}
-	.report header {
-		background-color: white;
-	}
-	.report .status {
-		display: inline-block;
-		width: 40px;
-	}
-	.report .mode {
-		display: inline-block;
-		width: 50px;
-	}
-	.report pre {
-		background-color: white;
-		margin: 0 0 0 40px;
-		padding-left: 5px;
-	}
-	</style>
-</head><body><header>golab</header>
-<script>(function() {
-function newchild(pa, tag, inner) {
-	var ele = document.createElement(tag);
-	pa.appendChild(ele);
-	if (inner) ele.innerHTML = inner;
-	return ele;
-}
-function pad(str, l) {
-	while (str.length < l) {
-		str = "         " + str;
-	}
-	return str.slice(str.length-l);
-}
-function addreport(cont, r) {
-	var c = newchild(cont, "div");
-	header = '<span class="mode">'+r.Mode+'</span> '+ r.Path;
-	if (r.Err != null) {
-		c.setAttribute("class", "report fail");
-		header = '<span class="status">FAIL</span> '+ header +": "+ r.Err;
-	} else {
-		c.setAttribute("class", "report ok");
-		header = '<span class="status">ok</span> '+ header;
-	}
-	newchild(c, "header", header);
-	var buf = [];
-	if (r.Stdout) buf.push(r.Stdout);
-	if (r.Stderr) buf.push(r.Stderr);
-	var output = buf.join("\n")
-	if (output) newchild(c, "pre", output);
-	return c;
-}
-var cont = newchild(document.body, "div");
-if (window["WebSocket"]) {
-	var conn = new WebSocket("ws://"+ location.host+"/ws");
-	conn.onclose = function(e) {
-		newchild(cont, "div", "WebSocket closed.");
-	};
-	conn.onmessage = function(e) {
-		var msg = JSON.parse(e.data);
-		if (msg.Head == "report") {
-			addreport(cont, msg.Data);
-		} else {
-			newchild(cont, "div", e.data);
-		}
-	};
-	conn.onopen = function(e) {
-		newchild(cont, "div", "WebSocket started.");
-		conn.send('{"Head":"hi"}\n');
-	};
-} else {
-	newchild(cont, "p", "WebSockets are not supported by your browser.");
-}
-})()</script></body></html>
+	<meta charset="utf-8">
+	<link href="/static/main.css" rel="stylesheet">
+</head><body>
+	<header>golab</header>
+	<script data-main="/static/main" src="/static/require.js"></script>
+</body></html>
 `)

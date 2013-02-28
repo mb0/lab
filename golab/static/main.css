@@ -1,0 +1,28 @@
+/*
+Copyright 2013 Martin Schnabel. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+*/
+body { padding: 0; margin: 0; }
+.report.ok, .report.ok .status {
+	background-color: green;
+}
+.report.fail, .report.fail .status {
+	background-color: red;
+}
+.report header {
+	background-color: white;
+}
+.report .status {
+	display: inline-block;
+	width: 40px;
+}
+.report .mode {
+	display: inline-block;
+	width: 50px;
+}
+.report pre {
+	background-color: white;
+	margin: 0 0 0 40px;
+	padding-left: 5px;
+}

@@ -67,24 +67,79 @@ var indexbytes = []byte(`<!DOCTYPE html>
 <html lang="en"><head>
 	<meta charset="utf-8">
 	<title>golab</title>
-</head><body><script>(function() {
+	<style>
+	body { padding: 0; margin: 0; }
+	.report.ok, .report.ok .status {
+		background-color: green;
+	}
+	.report.fail, .report.fail .status {
+		background-color: red;
+	}
+	.report header {
+		background-color: white;
+	}
+	.report .status {
+		display: inline-block;
+		width: 40px;
+	}
+	.report .mode {
+		display: inline-block;
+		width: 50px;
+	}
+	.report pre {
+		background-color: white;
+		margin: 0 0 0 40px;
+		padding-left: 5px;
+	}
+	</style>
+</head><body><header>golab</header>
+<script>(function() {
 function newchild(pa, tag, inner) {
 	var ele = document.createElement(tag);
 	pa.appendChild(ele);
 	if (inner) ele.innerHTML = inner;
 	return ele;
 }
+function pad(str, l) {
+	while (str.length < l) {
+		str = "         " + str;
+	}
+	return str.slice(str.length-l);
+}
+function addreport(cont, r) {
+	var c = newchild(cont, "div");
+	header = '<span class="mode">'+r.Mode+'</span> '+ r.Path;
+	if (r.Err != null) {
+		c.setAttribute("class", "report fail");
+		header = '<span class="status">FAIL</span> '+ header +": "+ r.Err;
+	} else {
+		c.setAttribute("class", "report ok");
+		header = '<span class="status">ok</span> '+ header;
+	}
+	newchild(c, "header", header);
+	var buf = [];
+	if (r.Stdout) buf.push(r.Stdout);
+	if (r.Stderr) buf.push(r.Stderr);
+	var output = buf.join("\n")
+	if (output) newchild(c, "pre", output);
+	return c;
+}
 var cont = newchild(document.body, "div");
 if (window["WebSocket"]) {
 	var conn = new WebSocket("ws://"+ location.host+"/ws");
 	conn.onclose = function(e) {
-		newchild(cont, "p", "WebSocket closed.");
+		newchild(cont, "div", "WebSocket closed.");
 	};
 	conn.onmessage = function(e) {
-		newchild(cont, "p", e.data);
+		var msg = JSON.parse(e.data);
+		if (msg.Head == "report") {
+			addreport(cont, msg.Data);
+		} else {
+			newchild(cont, "div", e.data);
+		}
 	};
 	conn.onopen = function(e) {
-		newchild(cont, "p", "WebSocket started.");
+		newchild(cont, "div", "WebSocket started.");
 		conn.send('{"Head":"hi"}\n');
 	};
 } else {

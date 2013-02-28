@@ -1,0 +1,65 @@
+/*
+Copyright 2013 Martin Schnabel. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+*/
+body {
+	padding: 0; margin: 0;
+	font-family: "Ubuntu Mono" monospace;
+	font-size: 16px;
+	line-height: 1.555em;
+}
+ul { padding: 0; margin: 0; list-style: none;}
+nav ul ul {display: inline-block;}
+nav li { margin: 3px; display: inline-block;}
+a { text-decoration: none;}
+a.active { text-decoration: underline;}
+pre { padding-left: 15px;}
+
+#app {
+	position: absolute;
+	top:0; left:0; right:0; bottom: 0;
+	overflow: none;
+}
+#app > nav {
+	position: absolute;
+	top:0; left:0; right:0; height: 2em;
+
+	text-shadow: 0 1px 2px #FFFFFF;
+	background-color: #F0F0F0;
+	box-shadow: inset 0 0 10px #D0D0D0;
+}
+#app > div {
+	position: absolute;
+	top:2em; left:0; right:0; bottom: 0;
+
+	color: #E6E1DC;
+	background-color: #202020;
+	box-shadow: inset 0 0 25px #000000;
+	text-shadow: 0 1px 2px #202020;
+}
+
+.report.ok, .report.ok .status {
+	background-color: rgba(100, 200, 100, 0.75);
+}
+.report.fail, .report.fail .status {
+	background-color:  rgba(200, 100, 100, 0.75);
+}
+.report header {
+	background-color: rgba(50, 50, 50, 0.50);
+}
+.report .status {
+	display: inline-block;
+	width: 40px;
+	padding-left: 5px;
+}
+.report .mode {
+	display: inline-block;
+	width: 60px;
+	padding-left: 5px;
+}
+.report pre {
+	background-color: rgba(50, 50, 50, 0.75);
+	margin: 0 0 0 45px;
+	padding-left: 10px;
+}

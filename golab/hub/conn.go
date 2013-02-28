@@ -103,7 +103,9 @@ func (c *conn) write() {
 }
 
 func (c *conn) close() {
-	close(c.send)
 	c.ticker.Stop()
 	c.wconn.Close()
+	if _, ok := <-c.send; ok {
+		close(c.send)
+	}
 }

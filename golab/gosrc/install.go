@@ -5,7 +5,7 @@
 package gosrc
 
 import (
-	"fmt"
+	"bytes"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -16,7 +16,6 @@ import (
 
 var gotool = filepath.Join(runtime.GOROOT(), "bin/go")
 var testexe = ".test"
-var ErrTimeout = fmt.Errorf("timeout")
 
 func init() {
 	if runtime.GOOS == "windows" {
@@ -26,19 +25,19 @@ func init() {
 
 func Install(pkg *Pkg) *Report {
 	r := &Report{Mode: "install", Path: pkg.Path}
-	cmd := rcmd(r, gotool, "go", "install", r.Path)
+	cmd := newcmd(gotool, "go", "install", r.Path)
 
 	if r.Err = cmd.Start(); r.Err != nil {
 		return r
 	}
-	r.Start = time.Now()
-	r.Err = cmd.Wait()
+	r.Start = time.Now().Unix()
+	wait(cmd, r)
 	return r
 }
 
 func Test(pkg *Pkg) *Report {
 	r := &Report{Mode: "test", Path: pkg.Path}
-	cmd := rcmd(r, gotool, "go", "test", "-c", "-i", r.Path)
+	cmd := newcmd(gotool, "go", "test", "-c", "-i", r.Path)
 
 	tmp, err := ioutil.TempDir("", "labtest")
 	if err != nil {
@@ -51,14 +50,13 @@ func Test(pkg *Pkg) *Report {
 	if r.Err = cmd.Start(); r.Err != nil {
 		return r
 	}
-	r.Start = time.Now()
-	r.Err = cmd.Wait()
-	if r.Err != nil {
+	r.Start = time.Now().Unix()
+	if wait(cmd, r); r.Err != nil {
 		return r
 	}
 	_, binary := filepath.Split(r.Path)
 	binary += testexe
-	cmd = rcmd(r, filepath.Join(tmp, binary), binary, "-test.v", "-test.short", "-test.timeout=3s")
+	cmd = newcmd(filepath.Join(tmp, binary), binary, "-test.v", "-test.short", "-test.timeout=3s")
 	cmd.Dir = pkg.Dir
 	if r.Err = cmd.Start(); r.Err != nil {
 		return r
@@ -67,12 +65,18 @@ func Test(pkg *Pkg) *Report {
 	return r
 }
 
-func rcmd(r *Report, args ...string) *exec.Cmd {
+func newcmd(args ...string) *exec.Cmd {
+	var out, err bytes.Buffer
 	return &exec.Cmd{
 		Path:   args[0],
 		Args:   args[1:],
 		Dir:    os.TempDir(),
-		Stdout: &r.out,
-		Stderr: &r.err,
+		Stdout: &out,
+		Stderr: &err,
 	}
+}
+func wait(cmd *exec.Cmd, r *Report) {
+	r.Err = cmd.Wait()
+	r.Stdout = cmd.Stdout.(*bytes.Buffer).String()
+	r.Stderr = cmd.Stderr.(*bytes.Buffer).String()
 }

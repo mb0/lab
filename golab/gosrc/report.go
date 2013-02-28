@@ -7,7 +7,6 @@ package gosrc
 import (
 	"bytes"
 	"fmt"
-	"time"
 )
 
 var (
@@ -17,19 +16,22 @@ var (
 )
 
 type Report struct {
-	Mode, Path string
-	Start      time.Time
-	Err        error
-	out, err   bytes.Buffer
+	Mode   string
+	Path   string
+	Start  int64
+	Err    error
+	Stdout string `json:",omitempty"`
+	Stderr string `json:",omitempty"`
 }
 
 func (r *Report) String() string {
 	if r.Err != nil {
 		var buf bytes.Buffer
 		fmt.Fprintf(&buf, "%s %-7s %s %s", failmsg, r.Mode, r.Path, r.Err)
-		for _, b := range []*bytes.Buffer{&r.out, &r.err} {
-			for l := line(b); l != nil; l = line(b) {
-				if len(l) == 0 || l[0] == '#' {
+		var b, l []byte
+		for _, b = range [][]byte{[]byte(r.Stdout), []byte(r.Stderr)} {
+			for b, l = line(b); len(l) > 0; b, l = line(b) {
+				if len(l) == 1 || l[0] == '#' {
 					continue
 				}
 				fmt.Fprintf(&buf, "\n%s ", failpre)
@@ -41,13 +43,9 @@ func (r *Report) String() string {
 	return fmt.Sprintf("%s %-7s %s", okmsg, r.Mode, r.Path)
 }
 
-func line(buf *bytes.Buffer) []byte {
-	line, err := buf.ReadBytes('\n')
-	if err != nil {
-		return line
+func line(buf []byte) ([]byte, []byte) {
+	if i := bytes.IndexByte(buf, '\n'); i > -1 {
+		return buf[i+1:], buf[:i]
 	}
-	if len(line) < 1 {
-		return nil
-	}
-	return line[:len(line)-1]
+	return nil, buf
 }

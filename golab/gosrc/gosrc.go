@@ -54,6 +54,18 @@ func (s *Src) SignalReports(f func(*Report)) {
 	s.reportsignal = append(s.reportsignal, f)
 }
 
+func (s *Src) AllReports() []*Report {
+	s.Lock()
+	defer s.Unlock()
+	var reps []*Report
+	for _, pkg := range s.lookup {
+		if pkg.Flag&Working != 0 && (pkg.Src.Info != nil || pkg.Test.Info != nil) {
+			reps = append(reps, NewReport(pkg))
+		}
+	}
+	return reps
+}
+
 func (s *Src) Filter(r *ws.Res) bool {
 	if r.Flag&ws.FlagDir == 0 {
 		if filepath.Ext(r.Name) == ".go" {

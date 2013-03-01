@@ -73,7 +73,7 @@ var ReportView = base.Page.extend({
 	initialize: function() {
 		this.reports = new Reports();
 		this.listview = new ReportList({collection:this.reports});
-		this.listenTo(conn, "msg:report", this.addReport);
+		this.listenTo(conn, "msg:report msg:reports", this.addReport);
 		this.render();
 	},
 	render: function() {

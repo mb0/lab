@@ -19,9 +19,19 @@ type File struct {
 }
 
 type Info struct {
+	Time    int64
 	Files   []File
 	Imports []Import
-	Uses    []ws.Id
+}
+
+func (nfo *Info) Copy() *Info {
+	if nfo == nil {
+		return nil
+	}
+	i := *nfo
+	i.Imports = make([]Import, len(nfo.Imports))
+	copy(i.Imports, nfo.Imports)
+	return &i
 }
 
 func (nfo *Info) Import(path string) *Import {
@@ -52,14 +62,6 @@ func (nfo *Info) AddFile(id ws.Id, name string) {
 		nfo.Files = append(nfo.Files, File{Id: id, Name: name})
 	}
 }
-func (nfo *Info) AddUse(id ws.Id) {
-	for _, i := range nfo.Uses {
-		if i == id {
-			return
-		}
-	}
-	nfo.Uses = append(nfo.Uses, id)
-}
 func (nfo *Info) Merge(old *Info) {
 	if nfo == nil || old == nil {
 		return
@@ -73,6 +75,5 @@ func (nfo *Info) Merge(old *Info) {
 			}
 		}
 	}
-	nfo.Uses = old.Uses
 	return
 }

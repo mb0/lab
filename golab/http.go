@@ -21,8 +21,19 @@ var (
 )
 
 func router(h *hub.Hub, m hub.Msg, id hub.Id) {
-	// echo messages
-	h.SendMsg(m, id)
+	switch {
+	case m == hub.Signon:
+		// send reports for all working packages
+		msg, err := hub.Marshal("reports", lab.src.AllReports())
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		h.SendMsg(msg, id)
+	default:
+		// echo messages
+		h.SendMsg(m, id)
+	}
 }
 
 func index(w http.ResponseWriter, r *http.Request) {

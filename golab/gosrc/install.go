@@ -23,21 +23,29 @@ func init() {
 	}
 }
 
-func Install(pkg *Pkg) *Report {
-	r := &Report{Mode: "install", Path: pkg.Path}
-	cmd := newcmd(gotool, "go", "install", r.Path)
+type Result struct {
+	Mode   string
+	Time   int64
+	Err    error
+	Stdout string `json:",omitempty"`
+	Stderr string `json:",omitempty"`
+}
+
+func Install(pkg *Pkg) *Result {
+	r := &Result{Mode: "install"}
+	cmd := newcmd(gotool, "go", "install", pkg.Path)
 
 	if r.Err = cmd.Start(); r.Err != nil {
 		return r
 	}
-	r.Start = time.Now().Unix()
+	r.Time = time.Now().Unix()
 	wait(cmd, r)
 	return r
 }
 
-func Test(pkg *Pkg) *Report {
-	r := &Report{Mode: "test", Path: pkg.Path}
-	cmd := newcmd(gotool, "go", "test", "-c", "-i", r.Path)
+func Test(pkg *Pkg) *Result {
+	r := &Result{Mode: "test"}
+	cmd := newcmd(gotool, "go", "test", "-c", "-i", pkg.Path)
 
 	tmp, err := ioutil.TempDir("", "labtest")
 	if err != nil {
@@ -50,11 +58,11 @@ func Test(pkg *Pkg) *Report {
 	if r.Err = cmd.Start(); r.Err != nil {
 		return r
 	}
-	r.Start = time.Now().Unix()
+	r.Time = time.Now().Unix()
 	if wait(cmd, r); r.Err != nil {
 		return r
 	}
-	_, binary := filepath.Split(r.Path)
+	_, binary := filepath.Split(pkg.Path)
 	binary += testexe
 	cmd = newcmd(filepath.Join(tmp, binary), binary, "-test.v", "-test.short", "-test.timeout=3s")
 	cmd.Dir = pkg.Dir
@@ -75,7 +83,7 @@ func newcmd(args ...string) *exec.Cmd {
 		Stderr: &err,
 	}
 }
-func wait(cmd *exec.Cmd, r *Report) {
+func wait(cmd *exec.Cmd, r *Result) {
 	r.Err = cmd.Wait()
 	r.Stdout = cmd.Stdout.(*bytes.Buffer).String()
 	r.Stderr = cmd.Stderr.(*bytes.Buffer).String()

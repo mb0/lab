@@ -20,13 +20,13 @@ func Scan(p *Pkg) error {
 	var err error
 	if src != nil {
 		p.Name, err = parse(p, src, "")
-		src.Merge(p.Src)
+		src.Merge(p.Src.Info)
 	}
 	if test != nil {
 		p.Name, err = parse(p, test, p.Name)
-		test.Merge(p.Test)
+		test.Merge(p.Test.Info)
 	}
-	p.Scan, p.Src, p.Test = time.Now(), src, test
+	p.Src.Info, p.Test.Info = src, test
 	return err
 }
 func getinfo(p *Pkg) (src, test *Info) {
@@ -40,12 +40,12 @@ func getinfo(p *Pkg) (src, test *Info) {
 		if c.Flag&(ws.FlagDir|FlagGo) == FlagGo {
 			if strings.HasSuffix(c.Name, "_test.go") {
 				if test == nil {
-					test = &Info{}
+					test = &Info{Time: time.Now().Unix()}
 				}
 				test.AddFile(c.Id, c.Name)
 			} else {
 				if src == nil {
-					src = &Info{}
+					src = &Info{Time: time.Now().Unix()}
 				}
 				src.AddFile(c.Id, c.Name)
 			}

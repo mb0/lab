@@ -15,37 +15,6 @@ import (
 
 var FlagGo uint64 = 1 << 16
 
-type PkgFlag uint64
-
-const (
-	_ PkgFlag = 1 << iota
-
-	Working
-	Recursing
-	Watching
-	MissingDeps
-)
-
-type Pkg struct {
-	sync.Mutex
-	Id   ws.Id
-	Dir  string
-	Flag PkgFlag
-	Pkgs []*Pkg
-
-	// Valid
-	Path string
-
-	// Found
-	Res *ws.Res
-
-	// Scanned
-	Scan time.Time
-	Name string
-	Src  *Info
-	Test *Info
-}
-
 type Src struct {
 	sync.RWMutex
 	srcids []ws.Id
@@ -65,7 +34,10 @@ func New(srcids []ws.Id) *Src {
 		queue:  ws.NewThrottle(time.Second),
 		rmchan: make(chan *ws.Res),
 	}
-	s.lookup["C"] = &Pkg{Path: "C", Name: "C", Scan: time.Now()}
+	p := Pkg{Id: ws.NewId("C"), Path: "C"}
+	p.Name = "C"
+	p.Src.Info = &Info{}
+	s.lookup["C"] = &p
 	go s.run()
 	return s
 }
@@ -80,6 +52,18 @@ func (s *Src) SignalReports(f func(*Report)) {
 	s.Lock()
 	defer s.Unlock()
 	s.reportsignal = append(s.reportsignal, f)
+}
+
+func (s *Src) AllReports() []*Report {
+	s.Lock()
+	defer s.Unlock()
+	var reps []*Report
+	for _, pkg := range s.lookup {
+		if pkg.Flag&Working != 0 && (pkg.Src.Info != nil || pkg.Test.Info != nil) {
+			reps = append(reps, NewReport(pkg))
+		}
+	}
+	return reps
 }
 
 func (s *Src) Filter(r *ws.Res) bool {
@@ -233,24 +217,19 @@ func work(s *Src, p *Pkg, dirty map[ws.Id]*Pkg) {
 		return
 	}
 	dirty[p.Id] = nil
-	var uses []ws.Id
-	if p.Src != nil {
-		rep := Install(p)
-		for _, f := range s.reportsignal {
-			f(rep)
-		}
-		if rep.Err != nil {
-			return
-		}
-		uses = p.Src.Uses
+	if p.Src.Info != nil {
+		p.Src.Result = Install(p)
 	}
-	if p.Test != nil {
-		rep := Test(p)
+	if p.Test.Info != nil {
+		p.Test.Result = Test(p)
+	}
+	if p.Src.Result != nil || p.Test.Result != nil {
+		rep := NewReport(p)
 		for _, f := range s.reportsignal {
 			f(rep)
 		}
 	}
-	for _, id := range uses {
+	for _, id := range p.Uses {
 		if _, ok := dirty[id]; !ok {
 			dirty[id] = s.pkgs[id]
 		}

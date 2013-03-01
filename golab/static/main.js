@@ -37,30 +37,34 @@ var Html = Backbone.View.extend({
 	},
 });
 var Report = Backbone.Model.extend({
-	getoutput: function() {
-		var out = (this.get("Stdout") || "") + (this.get("Stderr") || "");
-		return out.replace(/(^(#.*|\S)\n|\n#[^\n]*)/g, "");
+	getresult: function() {
+		var src = this.get("Src").Result, test = this.get("Test").Result;
+		if (src && src.Err) return src;
+		if (test) return test;
+		return src
 	},
-	getstatus: function() {
-		return !this.get("Err") ? "ok" : "fail";
+	getstatus: function(res) {
+		return !(res && res.Err) ? "ok" : "fail";
+	},
+	getoutput: function(res) {
+		if (!res) return "";
+		var out = (res.Stdout || "") + (res.Stderr || "");
+		return out.replace(/(^(#.*|\S)\n|\n#[^\n]*)/g, "");
 	},
 });
 var Reports = Backbone.Collection.extend({model:Report});
 var ReportListItem = base.ListItemView.extend({
-	template1: _.template([
-		'<div class="report <%- getstatus() %>">',
+	template: _.template([
+		'<% var res = getresult(); var stat = getstatus(res), o = getoutput(res) %>',
+		'<div class="report <%- stat %>">',
 		'<header>',
-		'<span class="status"><%- getstatus().toUpperCase() %></span> ',
-		'<span class="mode"><%= get("Mode") %></span> ',
-		'<%= get("Path") %> <%= get("Err") || "" %>',
+		'<span class="status"><%- stat.toUpperCase() %></span> ',
+		'<span class="mode"><%= res && res.Mode || "" %></span> ',
+		'<%= get("Path") %> <%= res && res.Err || "" %>',
 		'</header>',
-		'<% var o; if (o = getoutput()) { %><pre><%= o %></pre><% } %>',
+		'<% if (o) { %><pre><%= o %></pre><% } %>',
 		'</div>',
 	].join('')),
-	template: function(r) {
-		console.log("addreport", r);
-		return this.template1(r);
-	},
 });
 var ReportList = base.ListView.extend({
 	itemView: ReportListItem

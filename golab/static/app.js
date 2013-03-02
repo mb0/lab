@@ -67,21 +67,16 @@ var App = Backbone.View.extend({
 });
 
 var Router = Backbone.Router.extend({
-	routes: {
-		"": "index",
-		"about": "about"
-	},
 	initialize: function(opts) {
 		this.tiles = opts.tiles || new Tiles([]);
 		this.app = new App({collection: this.tiles}).render();
+		this.tiles.each(this.routetile, this);
 		Backbone.history.start({});
 	},
-	index: function() {
-		this.app.activate("index");
-	},
-	about: function() {
-		this.app.activate("about");
-	},
+	routetile: function(t) {
+		var id = t.get("id"), uri = t.get("uri");
+		this.route(uri, id, _.bind(this.app.activate, this.app, id));
+	}
 });
 
 return {

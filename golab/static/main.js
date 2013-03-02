@@ -17,7 +17,7 @@ require.config({
 	}
 });
 
-define(["conn", "app", "view/report"], function(conn, app, report) {
+define(["conn", "app", "view/report", "view/file"], function(conn, app, report, file) {
 
 $(document).on("click", "a", function(e) {
 	e.preventDefault();
@@ -39,6 +39,7 @@ var Html = Backbone.View.extend({
 
 new app.Router({tiles: new app.Tiles([
 	{id: "index", uri: "", name:"report", view: new report.View()},
+	{id: "file", uri: "file", name:"file", view: new file.View()},
 	{id: "about", uri: "about", name:"about", view: new Html([
 		'<pre>',
 		'go live action builds',

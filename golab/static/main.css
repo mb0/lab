@@ -44,7 +44,7 @@ pre { padding-left: 15px;}
 .report.ok, .report.ok .status {
 	background-color: rgba(100, 200, 100, 0.75);
 }
-.report.fail, .report.fail .status {
+.report.fail, .report.fail .status, .offline {
 	background-color:  rgba(200, 100, 100, 0.75);
 }
 .report header {

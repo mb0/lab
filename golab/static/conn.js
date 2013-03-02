@@ -29,8 +29,8 @@ var Conn = Backbone.Model.extend({
 			c.trigger("open", e);
 		};
 		ws.onclose = function(e) {
-			c.trigger("close", e);
 			c.wsconn = null;
+			c.trigger("close", e);
 		};
 		ws.onmessage = function(e) {
 			var msg = JSON.parse(e.data)
@@ -41,6 +41,9 @@ var Conn = Backbone.Model.extend({
 		ws.onerror = function(e) {
 			c.trigger("error", e.message);
 		};
+	},
+	connected: function() {
+		return this.wsconn != null;
 	},
 
 });

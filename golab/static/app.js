@@ -26,7 +26,7 @@ var Tabs = base.ListView.extend({
 			'<a href="#<%- get("uri") %>" <% if (get("active")) { %> class="active" <% } %>>',
 			'<%= get("name") %></a>',
 			'<% if (get("closable")) { %>',
-			'<sup class="close">x</sup>',
+			' <span class="close">x</span>',
 			'<% } %>',
 		].join('')),
 		events: { "click .close": "removeModel"},
@@ -66,16 +66,29 @@ var App = Backbone.View.extend({
 	}
 });
 
+
 var Router = Backbone.Router.extend({
 	initialize: function(opts) {
 		this.tiles = opts.tiles || new Tiles([]);
 		this.app = new App({collection: this.tiles}).render();
-		this.tiles.each(this.routetile, this);
+		this.tiles.each(function(t) {
+			var id = t.get("id"), uri = t.get("uri");
+			this.route(uri, id, _.bind(this.app.activate, this.app, id));
+		}, this);
+		_.each(opts.tilerouters, function(tr) {
+			this.route(tr.route, tr.name, _.bind(this.maketile, this, tr));
+		}, this)
 		Backbone.history.start({});
 	},
-	routetile: function(t) {
-		var id = t.get("id"), uri = t.get("uri");
-		this.route(uri, id, _.bind(this.app.activate, this.app, id));
+	maketile: function(tilerouter) {
+		var tiles = tilerouter.callback.apply(tilerouter, _.rest(arguments));
+		if (!tiles) return
+		tiles = _.isArray(tiles) ? tiles : [tiles];
+		this.tiles.add(tiles);
+		var active = _.find(tiles, function(t) {return t.active;});
+		if (active) {
+			this.app.activate(active.id);
+		}
 	}
 });
 

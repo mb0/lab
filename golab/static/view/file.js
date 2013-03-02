@@ -32,5 +32,37 @@ var FileView = Backbone.View.extend({
 	},
 });
 
-return {View: FileView};
+var views = {};
+function openfile(path) {
+	if (!path) {
+		// show src dirs
+		return;
+	}
+	if (path[path.length-1] == "/") {
+		path = path.slice(0, path.length-1);
+	}
+	path = "/"+path;
+	var view = views[path];
+	if (!view) {
+		view = new FileView({id: _.uniqueId("file")});
+		views[path] = view;
+	}
+	return {
+		id: view.id,
+		uri: "file"+path,
+		name: path,
+		view: view,
+		active: true,
+		closable: true,
+	};
+};
+
+return {
+	View: FileView,
+	router: {
+		route:    "file/*path",
+		name:     "openfile",
+		callback: openfile,
+	},
+};
 });

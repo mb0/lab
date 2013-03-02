@@ -37,24 +37,25 @@ var Html = Backbone.View.extend({
 	},
 });
 
-new app.Router({tiles: new app.Tiles([
-	{id: "index", uri: "", name:"report", view: new report.View()},
-	{id: "file", uri: "file", name:"file", view: new file.View()},
-	{id: "about", uri: "about", name:"about", view: new Html([
-		'<pre>',
-		'go live action builds',
-		'=====================\n',
-		'&copy; 2013 Martin Schnabel. All rights reserved.',
-		'BSD-style license.\n',
-		'Other code used:',
-		' * github.com/garyburd/go-websocket (Apache License 2.0)',
-		' * Underscore, Zepto.js, Backbone.js (MIT License)',
-		' * require.js (BSD/MIT License)',
-		' * json2.js (public domain).',
-		'</pre>'
-	].join('\n'))},
-])});
-
+new app.Router({
+	tilerouters: [file.router],
+	tiles: new app.Tiles([
+		{id: "index", uri: "", name:"report", view: new report.View()},
+		{id: "about", uri: "about", name:"about", view: new Html([
+			'<pre>',
+			'go live action builds',
+			'=====================\n',
+			'&copy; 2013 Martin Schnabel. All rights reserved.',
+			'BSD-style license.\n',
+			'Other code used:',
+			' * github.com/garyburd/go-websocket (Apache License 2.0)',
+			' * Underscore, Zepto.js, Backbone.js (MIT License)',
+			' * require.js (BSD/MIT License)',
+			' * json2.js (public domain).',
+			'</pre>'
+		].join('\n'))},
+	])
+});
 
 var ConnView = Backbone.View.extend({
 	tagName: "li",

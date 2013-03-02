@@ -18,33 +18,60 @@ import (
 
 var workpaths = flag.String("work", "./...", "path list of active packages. defaults to cwd")
 
-var modules []func()
+type Module interface {
+	Start()
+	Filter(*ws.Res) bool
+	Handle(ws.Op, *ws.Res)
+}
+
 var lab = &struct {
 	dirs []string
 	src  *gosrc.Src
 	ws   *ws.Ws
-}{}
+	mods []Module
+}{
+	dirs: build.Default.SrcDirs(),
+}
 
 func filter(r *ws.Res) bool {
-	if len(r.Name) > 0 && r.Name[0] == '.' {
+	l := len(r.Name)
+	if l == 0 {
+		return false
+	}
+	if r.Name[0] == '.' || r.Name[l-1] == '~' {
 		return true
 	}
-	return lab.src.Filter(r)
+	if r.Flag&ws.FlagDir == 0 && l > 4 {
+		switch r.Name[l-4:] {
+		case ".swp", ".swo":
+			return true
+		}
+	}
+	for _, mod := range lab.mods {
+		if mod.Filter(r) {
+			return true
+		}
+	}
+	return false
 }
+
 func handler(op ws.Op, r *ws.Res) {
 	if r.Flag&ws.FlagIgnore != 0 {
 		return
 	}
-	lab.src.Handle(op, r)
+	for _, mod := range lab.mods {
+		mod.Handle(op, r)
+	}
 }
+
 func main() {
 	flag.Parse()
-	lab.dirs = build.Default.SrcDirs()
 	ids := make([]ws.Id, 0, len(lab.dirs))
 	for _, d := range lab.dirs {
 		ids = append(ids, ws.NewId(d))
 	}
 	lab.src = gosrc.New(ids)
+	lab.mods = append(lab.mods, lab.src)
 	lab.src.SignalReports(func(r *gosrc.Report) {
 		fmt.Println(r)
 	})
@@ -68,8 +95,8 @@ func main() {
 			fmt.Printf("error mounting %s: %s\n", lab.dirs[i], err)
 		}
 	}
-	for _, module := range modules {
-		go module()
+	for _, mod := range lab.mods {
+		go mod.Start()
 	}
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, os.Kill)

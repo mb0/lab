@@ -12,6 +12,7 @@ if (!window["WebSocket"]) {
 var Conn = Backbone.Model.extend({
 	constructor: function(data, opts) {
 		this.wsconn = null;
+		this.queue = [];
 		Backbone.Model.prototype.constructor.call(this, data, opts);
 	},
 	connect: function() {
@@ -27,6 +28,9 @@ var Conn = Backbone.Model.extend({
 		var ws = c.wsconn = new WebSocket(c.wsurl);
 		ws.onopen = function(e) {
 			c.trigger("open", e);
+			console.log("work", c.queue);
+			_.each(c.queue, c.wsconn.send, c.wsconn);
+			c.queue = [];
 		};
 		ws.onclose = function(e) {
 			c.wsconn = null;
@@ -44,6 +48,16 @@ var Conn = Backbone.Model.extend({
 	},
 	connected: function() {
 		return this.wsconn != null;
+	},
+	send: function(head, data) {
+		var msg = JSON.stringify({"Head":head, "Data":data});
+		if (this.wsconn != null) {
+			console.log("send", msg);
+			this.wsconn.send(msg);
+		} else {
+			console.log("push", msg);
+			this.queue.push(msg);
+		}
 	},
 
 });

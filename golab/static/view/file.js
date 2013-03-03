@@ -43,9 +43,11 @@ var FileList = base.ListView.extend({
 
 var FileView = Backbone.View.extend({
 	tagName: "section",
+	className: "file",
 	template: _.template('<header><%= crumbs() %></header><%= get("Error") || "" %>'),
 	initialize: function(opts) {
 		this.model = new File({Path:opts.Path});
+		this.content = $('<pre class="content">');
 		this.children = new Files();
 		this.listview = new FileList({collection:this.children});
 		this.listenTo(conn, "msg:stat msg:stat.err", this.openMsg);
@@ -56,6 +58,7 @@ var FileView = Backbone.View.extend({
 	render: function() {
 		this.$el.html(this.template(this.model));
 		this.$el.append(this.listview.render().$el);
+		this.$el.append(this.content);
 		return this;
 	},
 	openMsg: function(data) {
@@ -63,9 +66,15 @@ var FileView = Backbone.View.extend({
 			return;
 		}
 		this.model.set(data);
-		if (data.Children) {
+		if (data.Error) return;
+		if (data.IsDir || data.Children) {
 			_.each(data.Children, function(c){c.parent = this.model;}, this);
 			this.children.reset(data.Children);
+		} else {
+			console.log("get /raw"+data.Path);
+			$.get("/raw"+data.Path, _.bind(function(data){
+				this.content.text(data);
+			}, this));
 		}
 	},
 });

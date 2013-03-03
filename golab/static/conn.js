@@ -28,9 +28,11 @@ var Conn = Backbone.Model.extend({
 		var ws = c.wsconn = new WebSocket(c.wsurl);
 		ws.onopen = function(e) {
 			c.trigger("open", e);
-			console.log("work", c.queue);
-			_.each(c.queue, c.wsconn.send, c.wsconn);
-			c.queue = [];
+			if (c.queue) {
+				console.log("work", c.queue);
+				_.each(c.queue, c.wsconn.send, c.wsconn);
+				c.queue = [];
+			}
 		};
 		ws.onclose = function(e) {
 			c.wsconn = null;

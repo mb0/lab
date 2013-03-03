@@ -29,8 +29,15 @@ func TestWalkSrc(t *testing.T) {
 	start := time.Now()
 	for i, err := range MountAll(w, dirs) {
 		if err != nil {
-			fmt.Printf("error mounting %s: %s\n", dirs[i], err)
+			t.Errorf("error mounting %s: %s\n", dirs[i], err)
 		}
+	}
+	first := w.all[NewId(dirs[0])]
+	if len(first.Children) == 0 {
+		t.Errorf("error mount children missing\n")
+	}
+	if first.Parent == nil || len(first.Parent.Children) == 0 {
+		t.Errorf("error mount parent missing\n")
 	}
 	for id, r := range w.all {
 		if rid := NewId(r.Path()); id != rid {

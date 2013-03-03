@@ -66,6 +66,8 @@ func (s *Src) AllReports() []*Report {
 	return reps
 }
 
+func (s *Src) Start() {}
+
 func (s *Src) Filter(r *ws.Res) bool {
 	if r.Flag&ws.FlagDir == 0 {
 		if filepath.Ext(r.Name) == ".go" {

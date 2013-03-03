@@ -32,19 +32,10 @@ var ListView = Backbone.View.extend({
 	}
 });
 
-var Page = Backbone.View.extend({
-	tagName: "section",
-	constructor: function(opts) {
-		this.name = opts && opts.name || "";
-		Backbone.View.prototype.constructor.call(this, opts);
-	},
-});
-
 return {
 	ModelView: ModelView,
 	ListView: ListView,
 	ListItemView: ModelView.extend({tagName: "li"}),
-	Page: Page,
 };
 
 });

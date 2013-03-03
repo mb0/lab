@@ -46,6 +46,19 @@ func (mod *httpmod) Start() {
 				return
 			}
 			h.SendMsg(msg, id)
+		case "stat":
+			var path string
+			err := m.Unmarshal(&path)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			msg, err := apistat(path)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			h.SendMsg(msg, id)
 		default:
 			// echo messages
 			h.SendMsg(m, id)
@@ -71,6 +84,38 @@ func (mod *httpmod) Filter(r *ws.Res) bool {
 }
 
 func (mod *httpmod) Handle(op ws.Op, r *ws.Res) {
+}
+
+func apistat(path string) (hub.Msg, error) {
+	res := apires{ws.NewId(path), path}
+	if r := lab.ws.Res(res.Id); r != nil {
+		res.Name = r.Name
+		if r.Dir != nil {
+			cs := make([]apires, 0, len(r.Children))
+			for _, c := range r.Children {
+				cs = append(cs, apires{c.Id, c.Name})
+			}
+			return hub.Marshal("stat", struct {
+				apires
+				Path     string
+				Children []apires
+			}{res, path, cs})
+		}
+		return hub.Marshal("stat", struct {
+			apires
+			Path string
+		}{res, path})
+	}
+	return hub.Marshal("stat.err", struct {
+		apires
+		Path  string
+		Error string
+	}{res, path, "not found"})
+}
+
+type apires struct {
+	Id   ws.Id `json:",string"`
+	Name string
 }
 
 func serveclient() {

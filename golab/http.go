@@ -6,6 +6,7 @@ package main
 
 import (
 	"flag"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -87,13 +88,17 @@ func (mod *httpmod) Handle(op ws.Op, r *ws.Res) {
 }
 
 func apistat(path string) (hub.Msg, error) {
-	res := apires{ws.NewId(path), path}
+	res := apires{ws.NewId(path), path, false}
 	if r := lab.ws.Res(res.Id); r != nil {
-		res.Name = r.Name
+		r.Lock()
+		defer r.Unlock()
+		res.Name, res.IsDir = r.Name, r.Flag&ws.FlagDir != 0
 		if r.Dir != nil {
 			cs := make([]apires, 0, len(r.Children))
 			for _, c := range r.Children {
-				cs = append(cs, apires{c.Id, c.Name})
+				if c.Flag&ws.FlagIgnore == 0 {
+					cs = append(cs, apires{c.Id, c.Name, c.Flag&ws.FlagDir != 0})
+				}
 			}
 			return hub.Marshal("stat", struct {
 				apires
@@ -114,8 +119,9 @@ func apistat(path string) (hub.Msg, error) {
 }
 
 type apires struct {
-	Id   ws.Id `json:",string"`
-	Name string
+	Id    ws.Id `json:",string"`
+	Name  string
+	IsDir bool
 }
 
 func serveclient() {
@@ -125,6 +131,7 @@ func serveclient() {
 	} else {
 		http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(static))))
 	}
+	http.HandleFunc("/raw/", raw)
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -160,4 +167,31 @@ func findstatic() string {
 		}
 	}
 	return ""
+}
+
+func raw(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path[:5] != "/raw/" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != "GET" {
+		http.Error(w, "Method nod allowed", 405)
+		return
+	}
+	path := r.URL.Path[4:]
+	if res := lab.ws.Res(ws.NewId(path)); res == nil || res.Flag&(ws.FlagDir|ws.FlagIgnore) != 0 {
+		http.NotFound(w, r)
+		return
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer f.Close()
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, err = io.Copy(w, f)
+	if err != nil {
+		log.Println(err)
+	}
 }

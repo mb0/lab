@@ -5,6 +5,16 @@ license that can be found in the LICENSE file.
 */
 define(["base", "conn"], function(base, conn) {
 
+function pathcrumbs(path) {
+	if (!path) return [];
+	var i = 0;
+	if (path[0] == "/") path = path.substr(1);
+	return _.map(path.split("/"), function(p){
+		i += p.length;
+		return [path.substr(0, i++), p];
+	});
+}
+
 var File = Backbone.Model.extend({
 	idAttribute: "Id",
 	getpath: function() {
@@ -13,6 +23,11 @@ var File = Backbone.Model.extend({
 			path += "/";
 		}
 		return path + this.get("Name");
+	},
+	crumbs: function() {
+		return _.map(pathcrumbs(this.get("Path")), function(c) {
+			return '<a href="#file/'+ c[0] +'">/'+c[1]+"</a>";
+		}).join("");
 	}
 });
 
@@ -28,7 +43,7 @@ var FileList = base.ListView.extend({
 
 var FileView = Backbone.View.extend({
 	tagName: "section",
-	template: _.template('<header><%- get("Path") %></header><%= get("Error") || "" %>'),
+	template: _.template('<header><%= crumbs() %></header><%= get("Error") || "" %>'),
 	initialize: function(opts) {
 		this.model = new File({Path:opts.Path});
 		this.children = new Files();
@@ -66,10 +81,13 @@ function openfile(path) {
 		view = new FileView({id: _.uniqueId("file"), Path: path});
 		views[path] = view;
 	}
+	var name = _.map(_.last(pathcrumbs(path),2), function(p) {
+		return p[1];
+	}).join("/") || path;
 	return {
 		id: view.id,
 		uri: "file"+path,
-		name: path,
+		name: name,
 		view: view,
 		active: true,
 		closable: true,

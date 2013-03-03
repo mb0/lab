@@ -152,6 +152,7 @@ func (w *Ws) mount(path string) (*Res, error) {
 	r = &Res{Id: id, Name: f, Flag: FlagDir | FlagMount, Dir: &Dir{Path: path}}
 	// add virtual parent
 	r.Parent = w.logicalParent(d)
+	r.Parent.Children = insert(r.Parent.Children, r)
 	w.all[id] = r
 	w.config.Handler(Add, r)
 	return r, nil

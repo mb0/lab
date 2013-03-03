@@ -130,6 +130,10 @@ func serveclient() {
 		indexbytes = []byte("cannot find client files.")
 	} else {
 		http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(static))))
+		http.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/cache-manifest; charset=utf-8")
+			http.ServeFile(w, r, filepath.Join(static, "main.manifest"))
+		})
 	}
 	http.HandleFunc("/raw/", raw)
 }
@@ -148,13 +152,13 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 var indexbytes = []byte(`<!DOCTYPE html>
-<html lang="en"><head>
+<html lang="en" manifest="/manifest"><head>
 	<title>golab</title>
 	<meta charset="utf-8">
 	<link href="/static/main.css" rel="stylesheet">
 </head><body>
 	<div id="app"></div>
-	<script data-main="/static/main" src="/static/require.js"></script>
+	<script data-main="/static/main" src="http://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.4/require.min.js"></script>
 </body></html>
 `)
 

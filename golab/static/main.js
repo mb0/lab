@@ -5,10 +5,10 @@ license that can be found in the LICENSE file.
 */
 require.config({
 	paths: {
-		json2: 'libs/json2.min',
-		zepto: 'libs/zepto.min',
-		underscore: 'libs/underscore',
-		backbone: 'libs/backbone'
+		json2: 'http://cdnjs.cloudflare.com/ajax/libs/json2/20121008/json2.min',
+		zepto: 'http://cdnjs.cloudflare.com/ajax/libs/zepto/1.0rc1/zepto.min',
+		underscore: 'http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min',
+		backbone: 'http://cdnjs.cloudflare.com/ajax/libs/backbone.js/0.9.10/backbone-min'
 	},
 	shim: {
 		underscore: {exports: "_"},

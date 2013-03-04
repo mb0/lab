@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
+	_ "github.com/mb0/ace"
 	"github.com/mb0/lab/golab/gosrc"
 	"github.com/mb0/lab/golab/hub"
 	"github.com/mb0/lab/ws"
@@ -126,10 +127,12 @@ type apires struct {
 
 func serveclient() {
 	http.HandleFunc("/", index)
-	if static := findstatic(); static == "" {
+	static, staticace := findstatic(), findace()
+	if static == "" || staticace == "" {
 		indexbytes = []byte("cannot find client files.")
 	} else {
 		http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(static))))
+		http.Handle("/static/ace/", http.StripPrefix("/static/ace/", http.FileServer(http.Dir(staticace))))
 		http.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/cache-manifest; charset=utf-8")
 			http.ServeFile(w, r, filepath.Join(static, "main.manifest"))
@@ -165,6 +168,17 @@ var indexbytes = []byte(`<!DOCTYPE html>
 func findstatic() string {
 	for _, dir := range lab.dirs {
 		path := filepath.Join(dir, "github.com/mb0/lab/golab/static")
+		_, err := os.Stat(path)
+		if err == nil {
+			return path
+		}
+	}
+	return ""
+}
+
+func findace() string {
+	for _, dir := range lab.dirs {
+		path := filepath.Join(dir, "github.com/mb0/ace/lib/ace")
 		_, err := os.Stat(path)
 		if err == nil {
 			return path

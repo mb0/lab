@@ -7,7 +7,8 @@ define(["require", "ace/ace", "ace/editor", "ace/virtual_renderer", "ace/multi_s
 
 var Renderer = require("ace/virtual_renderer").VirtualRenderer,
     Editor = require("ace/editor").Editor,
-    MultiSelect = require("ace/multi_select").MultiSelect;
+    MultiSelect = require("ace/multi_select").MultiSelect,
+    event = require("ace/lib/event");
 
 var modesByName = {
 	css: "css",
@@ -62,9 +63,19 @@ return function(c, name, value) {
 	editor.setDragDelay(3000);
 	new MultiSelect(editor);
 	editor.setSession(sess);
-	editor.setReadOnly(true);
+	editor.setReadOnly(false);
 	editor.setHighlightActiveLine(true);
 	editor.setHighlightSelectedWord(true);
+	var env = {
+		document: sess,
+		editor: editor,
+		onResize: editor.resize.bind(editor, null)
+	};
+	event.addListener(window, "resize", env.onResize);
+	editor.on("destroy", function() {
+		event.removeListener(window, "resize", env.onResize);
+	});
+	c.env = editor.env = env;
 	return editor;
 };
 });

@@ -62,22 +62,44 @@ var FileView = Backbone.View.extend({
 		return this;
 	},
 	openMsg: function(data) {
+		var view = this;
 		if (data.Path != this.model.get("Path")) {
 			return;
 		}
 		this.model.set(data);
 		if (data.Error) return;
 		if (data.IsDir || data.Children) {
-			_.each(data.Children, function(c){c.parent = this.model;}, this);
+			_.each(data.Children, function(c){c.parent = view.model;});
 			this.children.reset(data.Children);
 			this.content.children().remove();
 			this.content.append(this.listview.$el);
 		} else {
 			var path = data.Path;
-			$.get("/raw"+path, _.bind(function(data){
-				this.editor = createEditor(this.content[0], path, data);
-			}, this));
+			$.get("/raw"+path, function(data){
+				view.editor = createEditor(view.content[0], path, data);
+				view.editor.commands.addCommands([{
+					name:"save",
+					bindKey: {win: "Ctrl-S", mac:"Command-S"},
+					exec: function(editor, line) {
+						view.save();
+					},
+					readOnly: false
+				}]);
+			});
 		}
+	},
+	save: function() {
+		var path = this.model.get("Path");
+		console.log("save", path);
+		$.ajax({
+			type: "POST",
+			url:  "/raw"+path,
+			data: this.editor.getSession().getValue(),
+			processData: false,
+			success: function(resp) {
+				console.log("save success", path);
+			},
+		});
 	},
 });
 

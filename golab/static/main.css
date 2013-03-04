@@ -89,6 +89,8 @@ pre { padding-left: 15px;}
 	line-height: 1.333em;
 	position: absolute;
 	top:28px; left:0; right:0; bottom: 0;
+	text-shadow: none;
+	font-size: 14px;
 }
 .ace_editor.ace_lab {
 	font-family: "Ubuntu Mono", monospace;
@@ -132,8 +134,29 @@ pre { padding-left: 15px;}
 	background: none repeat scroll 0 0 rgba(221, 240, 255, 0.2);
 }
 .ace_lab .ace_marker-layer .ace_selected-word {
-	border-bottom: 1px solid #FFFF00;
+	border-bottom: 2px solid rgba(255, 255, 0, 1);
+}
+.ace_lab .ace_marker-layer .ace_bracket {
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	margin: -1px 0 0 -1px;
 }
 .ace_lab .ace_marker-layer .ace_active-line {
 	background: none repeat scroll 0 0 rgba(255, 255, 255, 0.02);
+}
+.ace_lab .ace_keyword {
+	color: #CABCAB;
+}
+.ace_lab .ace_comment {
+	color: #888888;
+}
+.ace_lab .ace_string {
+	color: #A0C070;
+}
+.ace_lab .ace_constant.ace_language,
+.ace_lab .ace_constant.ace_numeric {
+	color: #A080A0;
+}
+.ace_lab .ace_punctuation,
+.ace_lab .ace_paren {
+	color: #ABABAB;
 }

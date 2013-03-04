@@ -1,6 +1,6 @@
 lab
 ===
-lab is nothing yet.
+lab is almost working. <- this was the first successful edit with golab
 
 License
 -------

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
+	_ "github.com/mb0/ace"
 	"github.com/mb0/lab/golab/gosrc"
 	"github.com/mb0/lab/golab/hub"
 	"github.com/mb0/lab/ws"
@@ -126,10 +127,16 @@ type apires struct {
 
 func serveclient() {
 	http.HandleFunc("/", index)
-	if static := findstatic(); static == "" {
+	static, staticace := findstatic(), findace()
+	if static == "" || staticace == "" {
 		indexbytes = []byte("cannot find client files.")
 	} else {
 		http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(static))))
+		http.Handle("/static/ace/", http.StripPrefix("/static/ace/", http.FileServer(http.Dir(staticace))))
+		http.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/cache-manifest; charset=utf-8")
+			http.ServeFile(w, r, filepath.Join(static, "main.manifest"))
+		})
 	}
 	http.HandleFunc("/raw/", raw)
 }
@@ -148,13 +155,13 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 var indexbytes = []byte(`<!DOCTYPE html>
-<html lang="en"><head>
+<html lang="en" manifest="/manifest"><head>
 	<title>golab</title>
 	<meta charset="utf-8">
 	<link href="/static/main.css" rel="stylesheet">
 </head><body>
 	<div id="app"></div>
-	<script data-main="/static/main" src="/static/require.js"></script>
+	<script data-main="/static/main" src="http://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.4/require.min.js"></script>
 </body></html>
 `)
 
@@ -169,13 +176,26 @@ func findstatic() string {
 	return ""
 }
 
+func findace() string {
+	for _, dir := range lab.dirs {
+		path := filepath.Join(dir, "github.com/mb0/ace/lib/ace")
+		_, err := os.Stat(path)
+		if err == nil {
+			return path
+		}
+	}
+	return ""
+}
+
 func raw(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path[:5] != "/raw/" {
 		http.NotFound(w, r)
 		return
 	}
-	if r.Method != "GET" {
-		http.Error(w, "Method nod allowed", 405)
+	switch r.Method {
+	case "GET", "POST":
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	path := r.URL.Path[4:]
@@ -183,15 +203,30 @@ func raw(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	f, err := os.Open(path)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	defer f.Close()
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	_, err = io.Copy(w, f)
-	if err != nil {
-		log.Println(err)
+	switch r.Method {
+	case "GET":
+		f, err := os.Open(path)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		defer f.Close()
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, err = io.Copy(w, f)
+		if err != nil {
+			log.Println(err)
+		}
+	case "POST":
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, 0)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		defer f.Close()
+		_, err = io.Copy(f, r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 }

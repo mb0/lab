@@ -31,7 +31,7 @@ var ReportListItem = base.ListItemView.extend({
 		'<header>',
 		'<span class="status"><%- stat.toUpperCase() %></span> ',
 		'<span class="mode"><%= res && res.Mode || "" %></span> ',
-		'<%= get("Path") %> <%= res && res.Err || "" %>',
+		'<a href="#file<%= get("Dir") %>"><%= get("Path") %></a> <%= res && res.Err || "" %>',
 		'</header>',
 		'<% if (o) { %><pre><%= o %></pre><% } %>',
 		'</div>',

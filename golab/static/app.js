@@ -77,12 +77,12 @@ var Router = Backbone.Router.extend({
 		}, this);
 		_.each(opts.tilerouters, function(tr) {
 			this.route(tr.route, tr.name, _.bind(this.maketile, this, tr));
-		}, this)
+		}, this);
 		Backbone.history.start({});
 	},
 	maketile: function(tilerouter) {
 		var tiles = tilerouter.callback.apply(tilerouter, _.rest(arguments));
-		if (!tiles) return
+		if (!tiles) return;
 		tiles = _.isArray(tiles) ? tiles : [tiles];
 		this.tiles.add(tiles);
 		var active = _.find(tiles, function(t) {return t.active;});

@@ -49,6 +49,7 @@ var FileView = Backbone.View.extend({
 		this.model = new File({Path:opts.Path});
 		this.content = $('<div class="content">');
 		this.editor = null;
+		this.line = 0;
 		this.children = new Files();
 		this.listview = new FileList({collection:this.children});
 		this.listenTo(conn, "msg:stat msg:stat.err", this.openMsg);
@@ -85,6 +86,9 @@ var FileView = Backbone.View.extend({
 					},
 					readOnly: false
 				}]);
+				if (view.line > 0) {
+					view.setLine(view.line);
+				}
 			});
 		}
 	},
@@ -101,10 +105,24 @@ var FileView = Backbone.View.extend({
 			},
 		});
 	},
+	setLine: function(l) {
+		if (this.editor != null) {
+			this.editor.moveCursorToPosition({row:l-1, column:0});
+			var row = l-(this.editor.$getVisibleRowCount()*0.5);
+			this.editor.scrollToRow(Math.max(row,0));
+		} else {
+			this.line = l;
+		}
+	}
 });
 
 var views = {};
 function openfile(path) {
+	var line = 0;
+	var pathline = path.split("#L");
+	if (pathline.length > 1 && pathline[1].match(/^\d+$/)) {
+		path = pathline[0], line = parseInt(pathline[1], 10);
+	}
 	if (path && path[path.length-1] == "/") {
 		path = path.slice(0, path.length-1);
 	}
@@ -117,6 +135,7 @@ function openfile(path) {
 	var name = _.map(_.last(pathcrumbs(path),2), function(p) {
 		return p[1];
 	}).join("/") || path;
+	if (line > 0) view.setLine(line);
 	return {
 		id: view.id,
 		uri: "file"+path,
@@ -125,7 +144,7 @@ function openfile(path) {
 		active: true,
 		closable: true,
 	};
-};
+}
 
 return {
 	View: FileView,

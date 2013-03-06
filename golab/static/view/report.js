@@ -10,7 +10,7 @@ var Report = Backbone.Model.extend({
 		var src = this.get("Src").Result, test = this.get("Test").Result;
 		if (src && src.Err) return src;
 		if (test) return test;
-		return src
+		return src;
 	},
 	getstatus: function(res) {
 		return !(res && res.Err) ? "ok" : "fail";
@@ -18,7 +18,7 @@ var Report = Backbone.Model.extend({
 	getoutput: function(res) {
 		if (!res) return "";
 		var out = (res.Stdout || "") + (res.Stderr || "");
-		out = out.replace(/(\/([^/\s]+\/)+(\S+?\.go))\:(\d+)(?:\:(\d+))?\:/g, '<a href="#file$1">$2$3:$4</a>');
+		out = out.replace(/(\/([^\/\s]+\/)+(\S+?\.go))\:(\d+)(?:\:(\d+))?\:/g, '<a href="#file$1#L$4">$2$3:$4</a>');
 		return out.replace(/(^(#.*|\S)\n|\n#[^\n]*)/g, "");
 	},
 });

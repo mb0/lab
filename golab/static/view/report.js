@@ -45,6 +45,9 @@ var ReportList = base.ListView.extend({
 
 var ReportView = Backbone.View.extend({
 	tagName: "section",
+	attributes: {
+		"class": "reportview",
+	},
 	initialize: function() {
 		this.reports = new Reports();
 		this.listview = new ReportList({collection:this.reports});
@@ -57,6 +60,9 @@ var ReportView = Backbone.View.extend({
 	},
 	addReport: function(data) {
 		this.reports.add(data);
+		var d = this.el.scrollHeight - this.el.clientHeight;
+		if (d > 0)
+			this.el.scrollTop = d;
 	}
 });
 

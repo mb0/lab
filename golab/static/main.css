@@ -13,7 +13,6 @@ ul { padding: 0; margin: 0; list-style: none;}
 nav ul ul {display: inline-block;}
 nav li { margin: 3px; display: inline-block;}
 a { text-decoration: none;}
-a.active { text-decoration: underline;}
 pre { padding-left: 15px;}
 
 #app {
@@ -23,10 +22,41 @@ pre { padding-left: 15px;}
 }
 #app > nav {
 	height: 2em;
-	text-shadow: 0 1px 2px #FFFFFF;
 	background-color: #F0F0F0;
 	box-shadow: inset 0 0 10px #D0D0D0;
 	overflow: auto;
+}
+#app > nav a, #app > nav a:visited {
+	color: #555555;
+}
+#app > nav a:hover {
+	color: #000000;
+}
+#app > nav a.active {
+	text-decoration: underline;
+}
+#app > nav a i {
+	-webkit-transform:scale(1);
+	-moz-transform:scale(1);
+	-o-transform:scale(1);
+	-ms-transform:scale(1);
+	transform:scale(1);
+}
+#app > nav a.active i {
+	color: #000000;
+	-webkit-transform:scale(1.2);
+	-moz-transform:scale(1.2);
+	-o-transform:scale(1.2);
+	-ms-transform:scale(1.2);
+	transform:scale(1.2);
+	text-decoration: none;
+}
+#app > nav .close {
+	color: #BBBBBB;
+	font-size: 12px;
+}
+#app > nav .close:hover {
+	color: #222222;
 }
 #app > div {
 	position: absolute;

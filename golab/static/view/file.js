@@ -28,13 +28,21 @@ var File = Backbone.Model.extend({
 		return _.map(pathcrumbs(this.get("Path")), function(c) {
 			return '<a href="#file/'+ c[0] +'">/'+c[1]+"</a>";
 		}).join("");
+	},
+	icon: function(open) {
+		if (!this.get("IsDir")) {
+			return 'icon-file';
+		} else if (open) {
+			return 'icon-folder-open-alt';
+		}
+		return 'icon-folder-close-alt';
 	}
 });
 
 var Files = Backbone.Collection.extend({model:File});
 
 var FileListItem = base.ListItemView.extend({
-	template: _.template('<a href="#file<%- getpath() %>"><%- get("Name") %></a>'),
+	template: _.template('<a href="#file<%- getpath() %>"><i class="<%- icon() %>"></i> <%- get("Name") %></a>'),
 });
 
 var FileList = base.ListView.extend({
@@ -44,7 +52,7 @@ var FileList = base.ListView.extend({
 var FileView = Backbone.View.extend({
 	tagName: "section",
 	className: "file",
-	template: _.template('<header><%= crumbs() %></header><%= get("Error") || "" %>'),
+	template: _.template('<header><i class="<%- icon(true) %>"></i> <%= crumbs() %></header><%= get("Error") || "" %>'),
 	initialize: function(opts) {
 		this.model = new File({Path:opts.Path});
 		this.content = $('<div class="content">');

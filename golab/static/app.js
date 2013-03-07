@@ -26,7 +26,7 @@ var Tabs = base.ListView.extend({
 			'<a href="#<%- get("uri") %>" <% if (get("active")) { %> class="active" <% } %>>',
 			'<%= get("name") %></a>',
 			'<% if (get("closable")) { %>',
-			' <span class="close">x</span>',
+			'<i class="close icon-remove" title="close"></i>',
 			'<% } %>',
 		].join('')),
 		events: { "click .close": "removeModel"},

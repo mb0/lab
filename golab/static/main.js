@@ -20,9 +20,15 @@ require.config({
 
 define(["conn", "app", "view/report", "view/file"], function(conn, app, report, file) {
 
+$('<link>').attr({
+	type: "text/css",
+	rel:  "stylesheet",
+	href: "http://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.0.2/css/font-awesome.min.css",
+}).appendTo($("head").first());
+
 $(document).on("click", "a", function(e) {
 	e.preventDefault();
-	Backbone.history.navigate(e.target.getAttribute("href"), {trigger: true});
+	Backbone.history.navigate(e.currentTarget.getAttribute("href"), {trigger: true});
 });
 
 var Html = Backbone.View.extend({
@@ -41,8 +47,7 @@ var Html = Backbone.View.extend({
 new app.Router({
 	tilerouters: [file.router],
 	tiles: new app.Tiles([
-		{id: "index", uri: "", name:"report", view: new report.View()},
-		{id: "about", uri: "about", name:"about", view: new Html([
+		{id: "about", uri: "about", name:'<i class="icon-beaker" title="about"></i>', view: new Html([
 			'<pre>',
 			'go live action builds',
 			'=====================\n',
@@ -55,6 +60,7 @@ new app.Router({
 			' * json2.js (public domain).',
 			'</pre>'
 		].join('\n'))},
+		{id: "index", uri: "", name:'<i class="icon-circle" title="report"/></i>', view: new report.View()},
 	])
 });
 
@@ -68,7 +74,7 @@ var ConnView = Backbone.View.extend({
 		this.render();
 	},
 	render: function() {
-		this.$el.html(conn.connected() ? 'golab' : '<a class="offline">connect</a>');
+		this.$el.html(!conn.connected() ? '<a class="offline"><i class="icon-signin" title="reconnect"/></i></a>' : '');
 		return this;
 	},
 	connect: function(e) {

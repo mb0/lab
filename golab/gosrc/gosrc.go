@@ -48,6 +48,12 @@ func (s *Src) Pkg(id ws.Id) *Pkg {
 	return s.pkgs[id]
 }
 
+func (s *Src) Find(path string) *Pkg {
+	s.Lock()
+	defer s.Unlock()
+	return s.lookup[path]
+}
+
 func (s *Src) SignalReports(f func(*Report)) {
 	s.Lock()
 	defer s.Unlock()

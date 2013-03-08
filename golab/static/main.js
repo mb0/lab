@@ -18,7 +18,7 @@ require.config({
 	}
 });
 
-define(["conn", "app", "view/report", "view/file"], function(conn, app, report, file) {
+define(["conn", "app", "view/report", "view/file", "view/godoc"], function(conn, app, report, file, godoc) {
 
 $('<link>').attr({
 	type: "text/css",
@@ -28,7 +28,8 @@ $('<link>').attr({
 
 $(document).on("click", "a", function(e) {
 	e.preventDefault();
-	Backbone.history.navigate(e.currentTarget.getAttribute("href"), {trigger: true});
+	var href = $(e.currentTarget).attr("href");
+	if (href) Backbone.history.navigate(href, {trigger: true});
 });
 
 var Html = Backbone.View.extend({
@@ -45,7 +46,7 @@ var Html = Backbone.View.extend({
 });
 
 new app.Router({
-	tilerouters: [file.router],
+	tilerouters: [file.router, godoc.router],
 	tiles: new app.Tiles([
 		{id: "about", uri: "about", name:'<i class="icon-beaker" title="about"></i>', view: new Html([
 			'<pre>',

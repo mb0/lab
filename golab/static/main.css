@@ -126,6 +126,24 @@ pre { padding-left: 15px;}
 	text-shadow: none;
 	font-size: 14px;
 }
+.godoc {
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+}
+.godoc > * {
+	margin-left: 100px;
+}
+.godoc pre {
+	background-color: #282828;
+	padding: 10px 15px;
+}
+.toggleButton { cursor: pointer; }
+.toggle .collapsed { display: block; }
+.toggle .expanded { display: none; }
+.toggleVisible .collapsed { display: none; }
+.toggleVisible .expanded { display: block; }
+
 .ace_lab {
 	font-family: "Ubuntu Mono", monospace;
 }
@@ -143,7 +161,7 @@ pre { padding-left: 15px;}
 	background: #232323;
 }
 .ace_lab .ace_scroller {
-	background-color: rgba(40, 40, 40, 1);
+	background-color: #282828;
 	-webkit-box-shadow: inset 0 0 10px black;
 	-moz-box-shadow: inset 0 0 10px black;
 	-o-box-shadow: inset 0 0 10px black;

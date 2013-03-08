@@ -264,6 +264,6 @@ func godoc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	raw = regex.ReplaceAll(raw, []byte(fmt.Sprintf(`<a href="/#file%s$2$4"`, dir)))
+	raw = regex.ReplaceAll(raw, []byte(fmt.Sprintf(`<a href="#file%s$2$4"`, dir)))
 	w.Write(raw)
 }

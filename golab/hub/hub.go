@@ -76,8 +76,15 @@ func (h *Hub) run() {
 			h.conns[c.id] = c
 			h.router(h, Signon, c.id)
 		case c := <-h.signoff:
-			delete(h.conns, c.id)
+			_, ok := h.conns[c.id]
+			if !ok {
+				continue
+			}
 			h.router(h, Signoff, c.id)
+			delete(h.conns, c.id)
+			if _, ok := <-c.send; ok {
+				close(c.send)
+			}
 		case e := <-h.send:
 			switch e.To {
 			case Router:

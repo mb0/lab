@@ -49,6 +49,7 @@ var ReportView = Backbone.View.extend({
 		"class": "reportview",
 	},
 	initialize: function() {
+		this.lookup = {};
 		this.reports = new Reports();
 		this.listview = new ReportList({collection:this.reports});
 		this.listenTo(conn, "msg:report msg:reports", this.addReport);
@@ -63,6 +64,12 @@ var ReportView = Backbone.View.extend({
 		var d = this.el.scrollHeight - this.el.clientHeight;
 		if (d > 0)
 			this.el.scrollTop = d;
+		if (!_.isArray(data)) data = [data];
+		_.each(data, function(e) {
+			this.lookup[e.Id] = (e.Src && e.Src.Result && e.Src.Result.Err || e.Test && e.Test.Result && e.Test.Result.Err) != null;
+		}, this);
+		var hasErrors = _.find(this.lookup, function(e){ return e;});
+		$('i[title="report"]').css('color', hasErrors ? '#684242' : '#426842');
 	}
 });
 

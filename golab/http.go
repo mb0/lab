@@ -6,11 +6,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	_ "github.com/mb0/ace"
 	"github.com/mb0/lab/golab/gosrc"
@@ -139,6 +141,7 @@ func serveclient() {
 		})
 	}
 	http.HandleFunc("/raw/", raw)
+	http.HandleFunc("/doc/", godoc)
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -229,4 +232,38 @@ func raw(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+func godoc(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path[:5] != "/doc/" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	path := r.URL.Path[5:]
+	pkg := lab.src.Find(path)
+	if pkg == nil {
+		http.NotFound(w, r)
+		return
+	}
+	pkg.Lock()
+	dir := pkg.Dir
+	pkg.Unlock()
+	raw, err := gosrc.LoadHtmlDoc(path, false)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// fix source links
+	regex, err := regexp.Compile(fmt.Sprintf(`<a href="(/src/pkg/%s)(.*?\.go)(\?s=\d+:\d+(#L\d+))?"`, path))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	raw = regex.ReplaceAll(raw, []byte(fmt.Sprintf(`<a href="/#file%s$2$4"`, dir)))
+	w.Write(raw)
 }

@@ -38,7 +38,6 @@ func newconn(w http.ResponseWriter, r *http.Request) (*conn, error) {
 }
 
 func (c *conn) read(h *Hub) {
-	defer c.close()
 	for {
 		c.wconn.SetReadDeadline(time.Now().Add(readWait))
 		op, r, err := c.wconn.NextReader()
@@ -68,7 +67,6 @@ func (c *conn) read(h *Hub) {
 }
 
 func (c *conn) write() {
-	defer c.close()
 	for {
 		select {
 		case msg, ok := <-c.send:

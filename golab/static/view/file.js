@@ -143,6 +143,20 @@ var ViewManager = Backbone.View.extend({
 			} else if (e.Test && e.Test.Result && e.Test.Result.Err) {
 				res = e.Test.Result;
 			} else {
+				var clear = function(file) {
+					var path = e.Dir+"/"+file.Name;
+					var entry = this.map[path];
+					if (entry) {
+						_.each(entry.markers, function(val, key) {
+							entry.markers[key] = false;
+						});
+						update[path] = entry;
+					}
+				};
+				if (e.Src && e.Src.Info)
+					_.each(e.Src.Info.Files, clear, this);
+				if (e.Test && e.Test.Info)
+					_.each(e.Test.Info.Files, clear, this);
 				return;
 			}
 			var m = ((res.Stdout || "") + (res.Stderr || "")).match(re);
@@ -161,7 +175,11 @@ var ViewManager = Backbone.View.extend({
 				if (!e.view || !e.view.editor) return;
 				var sess = e.view.editor.getSession();
 				_.each(e.markers, function(val, line) {
-					sess.addGutterDecoration(line-1, "errormarker");
+					if (val) {
+						sess.addGutterDecoration(line-1, "errormarker");
+					} else {
+						sess.removeGutterDecoration(line-1, "errormarker");
+					}
 				});
 			});
 		}, 200, update);

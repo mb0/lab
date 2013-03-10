@@ -124,42 +124,89 @@ var FileView = Backbone.View.extend({
 	}
 });
 
-var views = {};
-function openfile(path) {
-	var line = 0;
-	var pathline = path.split("#L");
-	if (pathline.length > 1 && pathline[1].match(/^\d+$/)) {
-		path = pathline[0], line = parseInt(pathline[1], 10);
+var ViewManager = Backbone.View.extend({
+	initialize: function(opts) {
+		this.map = {}; // path: {view, markers},
+		this.listenTo(conn, "msg:report msg:reports", this.checkreport);
+		this.route = "file/*path";
+		this.name = "openfile";
+	},
+	checkreport: function(reports) {
+		if (!_.isArray(reports)) reports = [reports];
+		// check for markers and add to map
+		var re = /\/(?:[^\/\s]+\/)+(?:\S+?\.go)\:\d+/g;
+		var update = {};
+		_.each(reports, function(e) {
+			var res = null;
+			if (e.Src && e.Src.Result && e.Src.Result.Err) {
+				res = e.Src.Result;
+			} else if (e.Test && e.Test.Result && e.Test.Result.Err) {
+				res = e.Test.Result;
+			} else {
+				return;
+			}
+			var m = ((res.Stdout || "") + (res.Stderr || "")).match(re);
+			for (var i = 0; i < m.length; i ++) {
+				var colon = m[i].lastIndexOf(':');
+				var path = m[i].substr(0, colon);
+				var line = parseInt(m[i].substr(colon+1), 10);
+				var entry = this.map[path] || {view: null, markers:{}};
+				entry.markers[line] = true;
+				this.map[path] = entry;
+				update[path] = entry;
+			}
+		}, this);
+		_.delay(function(work) {
+			_.each(work, function(e) {
+				if (!e.view || !e.view.editor) return;
+				var sess = e.view.editor.getSession();
+				_.each(e.markers, function(val, line) {
+					sess.addGutterDecoration(line-1, "errormarker");
+				});
+			});
+		}, 200, update);
+	},
+	callback: function(path) {
+		var pl = this.splitline(path);
+		path = pl[0];
+		var entry = this.map[path] || {view: null, markers:{}};
+		if (!entry.view) {
+			entry.view = new FileView({id: _.uniqueId("file"), Path: path});
+			this.map[path] = entry;
+		}
+		if (pl[1] > 0) entry.view.setLine(pl[1]);
+		return this.newtile(path, entry.view);
+	},
+	newtile: function(path, view) {
+		return {
+			id: view.id,
+			uri: "file"+path,
+			name: this.tilename(path),
+			view: view,
+			active: true,
+			closable: true,
+		};
+	},
+	tilename: function(path) {
+		return _.map(_.last(pathcrumbs(path),2), function(p) {
+			return p[1];
+		}).join("/") || path;
+	},
+	splitline: function(path) {
+		var line = 0;
+		var pathline = path.split("#L");
+		if (pathline.length > 1 && pathline[1].match(/^\d+$/)) {
+			path = pathline[0], line = parseInt(pathline[1], 10);
+		}
+		if (path && path[path.length-1] == "/") {
+			path = path.slice(0, path.length-1);
+		}
+		return ["/"+path, line];
 	}
-	if (path && path[path.length-1] == "/") {
-		path = path.slice(0, path.length-1);
-	}
-	path = "/"+path;
-	var view = views[path];
-	if (!view) {
-		view = new FileView({id: _.uniqueId("file"), Path: path});
-		views[path] = view;
-	}
-	var name = _.map(_.last(pathcrumbs(path),2), function(p) {
-		return p[1];
-	}).join("/") || path;
-	if (line > 0) view.setLine(line);
-	return {
-		id: view.id,
-		uri: "file"+path,
-		name: name,
-		view: view,
-		active: true,
-		closable: true,
-	};
-}
+});
 
 return {
 	View: FileView,
-	router: {
-		route:    "file/*path",
-		name:     "openfile",
-		callback: openfile,
-	},
+	router: new ViewManager(),
 };
 });

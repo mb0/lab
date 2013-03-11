@@ -161,9 +161,6 @@ pre { padding-left: 15px;}
 .ace_lab .ace_gutter-layer {
 	text-align: right;
 }
-.ace_gutter-layer .errormarker {
-	background-color: #684242;
-}
 .ace_lab .ace_print-margin {
 	background: #232323;
 }

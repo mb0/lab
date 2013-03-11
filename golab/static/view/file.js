@@ -126,7 +126,7 @@ var FileView = Backbone.View.extend({
 
 var ViewManager = Backbone.View.extend({
 	initialize: function(opts) {
-		this.map = {}; // path: {view, markers},
+		this.map = {}; // path: {view, annotations},
 		this.listenTo(conn, "msg:report msg:reports", this.checkreport);
 		this.route = "file/*path";
 		this.name = "openfile";
@@ -134,10 +134,10 @@ var ViewManager = Backbone.View.extend({
 	checkreport: function(reports) {
 		if (!_.isArray(reports)) reports = [reports];
 		// check for markers and add to map
-		var re = /\/(?:[^\/\s]+\/)+(?:\S+?\.go)\:\d+/g;
+		var re = /^(\/(?:[^\/\s]+\/)+(?:\S+?\.go))\:(\d+)\:(?:(\d+)\:)?(.*)$/;
 		var update = {};
 		_.each(reports, function(e) {
-			var res = null;
+			var res = null, out = [];
 			if (e.Src && e.Src.Result && e.Src.Result.Err) {
 				res = e.Src.Result;
 			} else if (e.Test && e.Test.Result && e.Test.Result.Err) {
@@ -147,9 +147,7 @@ var ViewManager = Backbone.View.extend({
 					var path = e.Dir+"/"+file.Name;
 					var entry = this.map[path];
 					if (entry) {
-						_.each(entry.markers, function(val, key) {
-							entry.markers[key] = false;
-						});
+						entry.markers = [];
 						update[path] = entry;
 					}
 				};
@@ -159,13 +157,20 @@ var ViewManager = Backbone.View.extend({
 					_.each(e.Test.Info.Files, clear, this);
 				return;
 			}
-			var m = ((res.Stdout || "") + (res.Stderr || "")).match(re);
-			for (var i = 0; i < m.length; i ++) {
-				var colon = m[i].lastIndexOf(':');
-				var path = m[i].substr(0, colon);
-				var line = parseInt(m[i].substr(colon+1), 10);
-				var entry = this.map[path] || {view: null, markers:{}};
-				entry.markers[line] = true;
+			if (res.Stdout) out = out.concat(res.Stdout.split("\n"));
+			if (res.Stderr) out = out.concat(res.Stderr.split("\n"));
+			var path, line, m;
+			for (var i = 0; i < out.length; i++) {
+				m = out[i].match(re);
+				if (!m) continue;
+				path = m[1], line = parseInt(m[2], 10);
+				var entry = this.map[path] || {view: null, markers: []};
+				entry.markers.push({
+					row: line - 1,
+					column: (m[3] ? parseInt(m[3], 10) : 0) -1,
+					text: m[4].trim(),
+					type: "error"
+				});
 				this.map[path] = entry;
 				update[path] = entry;
 			}
@@ -174,20 +179,14 @@ var ViewManager = Backbone.View.extend({
 			_.each(work, function(e) {
 				if (!e.view || !e.view.editor) return;
 				var sess = e.view.editor.getSession();
-				_.each(e.markers, function(val, line) {
-					if (val) {
-						sess.addGutterDecoration(line-1, "errormarker");
-					} else {
-						sess.removeGutterDecoration(line-1, "errormarker");
-					}
-				});
+				sess.setAnnotations(e.markers);
 			});
 		}, 200, update);
 	},
 	callback: function(path) {
 		var pl = this.splitline(path);
 		path = pl[0];
-		var entry = this.map[path] || {view: null, markers:{}};
+		var entry = this.map[path] || {view: null, markers: []};
 		if (!entry.view) {
 			entry.view = new FileView({id: _.uniqueId("file"), Path: path});
 			this.map[path] = entry;

@@ -39,7 +39,7 @@ var modes = (function (modes){
 function getMode(path) {
 	for (var i = 0; i < modes.length; i++) {
 		if (path.match(modes[i].extRe)) {
-			return modes[i].mode;
+			return modes[i];
 		}
 	}
 	return modesByName.text;
@@ -55,7 +55,8 @@ return function(c, name, value) {
 	renderer.setPrintMarginColumn(120);
 	renderer.setHScrollBarAlwaysVisible(false);
 	var sess = ace.createEditSession(value);
-	sess.setMode(getMode(name));
+	var mode = getMode(name);
+	sess.setMode(mode.mode);
 	sess.setUseSoftTabs(false);
 	sess.setTabSize(8);
 	var editor = new Editor(renderer);
@@ -75,6 +76,29 @@ return function(c, name, value) {
 	editor.on("destroy", function() {
 		event.removeListener(window, "resize", env.onResize);
 	});
+	if (mode.name == "golang") {
+		editor.on("click", function(e) {
+			if (!e.getAccelKey() || !e.domEvent.altKey) return;
+			var pos = e.getDocumentPosition();
+			var sess = e.editor.getSession();
+			var tok = sess.getTokenAt(pos.row, pos.column);
+			if (tok.type == "string") {
+				var toks = sess.getTokens(pos.row);
+				for (var i=tok.index-1,r=pos.row; i >= 0 || r > 0; i--) {
+					if (toks === null || i < 0) {
+						toks = sess.getTokens(--r);
+						i = toks.length -1;
+					}
+					if (i < 0) continue;
+					var tt = toks[i].type;
+					if (tt == "string" || tt == "text" || tt == "paren.lparen" || tt == "identifier") continue;
+					if (tt != "keyword" && toks[i].value != "import") break;
+					var path = tok.value.substr(1, tok.value.length-2);
+					Backbone.history.navigate("doc/"+ path, {trigger: true});
+				}
+			}
+		});
+	}
 	c.env = editor.env = env;
 	return editor;
 };

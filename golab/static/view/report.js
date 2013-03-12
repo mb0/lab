@@ -6,14 +6,16 @@ license that can be found in the LICENSE file.
 define(["base", "conn"], function(base, conn) {
 
 var Report = Backbone.Model.extend({
+	idAttribute: "Id",
 	getresult: function() {
 		var src = this.get("Src").Result, test = this.get("Test").Result;
 		if (src && src.Err) return src;
 		if (test) return test;
 		return src;
 	},
-	getstatus: function(res) {
-		return !(res && res.Err) ? "ok" : "fail";
+	haserrors: function(res) {
+		res = res || this.getresult();
+		return res && res.Err != null;
 	},
 	getoutput: function(res) {
 		if (!res) return "";
@@ -27,10 +29,10 @@ var Reports = Backbone.Collection.extend({model:Report});
 
 var ReportListItem = base.ListItemView.extend({
 	template: _.template([
-		'<% var res = getresult(); var stat = getstatus(res), o = getoutput(res) %>',
-		'<div class="report <%- stat %>">',
+		'<% var res = getresult(); var err = haserrors(res), o = getoutput(res) %>',
+		'<div class="report <%- err ? "fail" : "ok" %>">',
 		'<header>',
-		'<span class="status"><%- stat.toUpperCase() %></span> ',
+		'<span class="status"><%- err ? "FAIL" : "OK" %></span> ',
 		'<span class="mode"><%= res && res.Mode || "" %></span> ',
 		'<a href="#file<%= get("Dir") %>"><%= get("Path") %></a> <%= res && res.Err || "" %>',
 		'</header>',
@@ -52,26 +54,29 @@ var ReportView = Backbone.View.extend({
 		this.lookup = {};
 		this.reports = new Reports();
 		this.listview = new ReportList({collection:this.reports});
-		this.listenTo(conn, "msg:report msg:reports", this.addReport);
+		this.listenTo(conn, "msg:report msg:reports", this.addreports);
 		this.render();
 	},
 	render: function() {
 		this.$el.append(this.listview.render().$el);
 		return this;
 	},
-	addReport: function(data) {
-		this.reports.add(data);
-		var d = this.el.scrollHeight - this.el.clientHeight;
-		if (d > 0)
-			this.el.scrollTop = d;
+	addreports: function(data) {
 		if (!_.isArray(data)) data = [data];
-		_.each(data, function(e) {
-			this.lookup[e.Id] = (e.Src && e.Src.Result && e.Src.Result.Err || e.Test && e.Test.Result && e.Test.Result.Err) != null;
-		}, this);
-		var hasErrors = _.find(this.lookup, function(e){ return e;});
-		$('i[title="report"]').css('color', hasErrors ? '#684242' : '#426842');
+		this.reports.add(data, {merge: true});
+		this.scrolltolast();
+		var hasErrors = this.reports.find(function(r) {
+			return r.haserrors();
+		});
+		var nav = $('i[title="report"]');
+		if (hasErrors) nav.addClass('red').removeClass('green');
+		else nav.addClass('green').removeClass('red');
+	},
+	scrolltolast: function() {
+		var d = this.el.scrollHeight - this.el.clientHeight;
+		if (d > 0) this.el.scrollTop = d;
 	}
 });
 
-return {View: ReportView};
+return {view: new ReportView()};
 });

@@ -61,7 +61,7 @@ new app.Router({
 			' * json2.js (public domain).',
 			'</pre>'
 		].join('\n'))},
-		{id: "index", uri: "", name:'<i class="icon-circle" title="report"/></i>', view: new report.View()},
+		{id: "index", uri: "", name:'<i class="icon-circle" title="report"/></i>', view: report.view},
 	])
 });
 

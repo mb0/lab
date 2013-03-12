@@ -46,6 +46,12 @@ pre { padding-left: 15px;}
 	-ms-transform:scale(1);
 	transform:scale(1);
 }
+#app > nav a i.red {
+	color: #684242;
+}
+#app > nav a i.green {
+	color: #426842;
+}
 #app > nav a.active i {
 	color: #000000;
 	-webkit-transform:scale(1.2);

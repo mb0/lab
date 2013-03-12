@@ -49,13 +49,16 @@ func (w *ctrl) remove(fsop Op, r *Res) error {
 			p.Children = remove(p.Children, r)
 		}
 	}
+	r.Unlock()
 	rm := []*Res{r}
 	if r.Dir != nil {
 		walk(r.Children, func(c *Res) error {
-			c.Lock()
 			rm = append(rm, c)
 			return nil
 		})
+	}
+	for _, c := range rm {
+		c.Lock()
 	}
 	for i := len(rm) - 1; i >= 0; i-- {
 		c := rm[i]

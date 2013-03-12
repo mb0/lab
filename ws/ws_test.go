@@ -91,20 +91,54 @@ func TestWatch(t *testing.T) {
 	r, err := w.Mount(dir)
 	fail("mount", err)
 	expect(dir, Add, Change)
-	file := dir + "/testfile"
-	f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0666)
-	fail("create testfile", err)
-	f.Close()
+	createdir := func(name string) string {
+		subdir := dir + name
+		err := os.Mkdir(subdir, 0777)
+		fail("subdir", err)
+		return subdir
+	}
+	createfile := func(name string) string {
+		file := dir + name
+		f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0666)
+		fail("create testfile", err)
+		f.Close()
+		return file
+	}
+	file := createfile("/testfile")
 	expect(file, Add|Create, Change|Modify)
+
 	os.Remove(file)
 	expect(file, Remove|Delete)
-	f, err = os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0666)
-	fail("recreate testfile", err)
-	f.Close()
+
+	file = createfile("/testfile")
 	expect(file, Add|Create, Change|Modify)
+
+	subdir := createdir("/testdir")
+	expect(subdir, Add|Create, Change|Create)
+
+	subsubdir := createdir("/testdir/sub")
+	expect(subsubdir, Add|Create, Change|Create)
+
+	otherfile := createfile("/testdir/sub/otherfile")
+	expect(otherfile, Add|Create, Change|Modify)
+
+	err = os.Rename(subsubdir, dir+"/sub")
+	fail("mv", err)
+	expect(otherfile, Remove|Delete)
+	expect(subsubdir, Remove|Delete)
+	subsubdir = dir + "/sub"
+	otherfile = dir + "/sub/otherfile"
+	expect(subsubdir, Add|Create)
+	expect(otherfile, Add|Create)
+	expect(subsubdir, Change|Create)
+
 	os.RemoveAll(dir)
 	expect(file, Remove|Delete)
+	expect(subdir, Remove|Delete)
+	expect(otherfile, Remove|Delete)
+	expect(subsubdir, Remove|Delete)
 	expect(dir, Remove|Delete)
+
 	if _, ok := w.all[r.Id]; ok {
 		t.Error("dir still exists after remove")
 	}

@@ -17,7 +17,7 @@ import (
 
 	_ "github.com/mb0/ace"
 	"github.com/mb0/lab/golab/gosrc"
-	"github.com/mb0/lab/golab/hub"
+	"github.com/mb0/lab/hub"
 	"github.com/mb0/lab/ws"
 )
 

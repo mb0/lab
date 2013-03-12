@@ -19,10 +19,20 @@ var Report = Backbone.Model.extend({
 	},
 	getoutput: function(res) {
 		if (!res) return "";
-		var out = (res.Stdout || "") + (res.Stderr || "");
+		return (res.Stdout || "") + (res.Stderr || "");
+	},
+	fixoutput: function(out) {
 		out = out.replace(/(\/([^\/\s]+\/)+(\S+?\.go))\:(\d+)(?:\:(\d+))?\:/g, '<a href="#file$1#L$4">$2$3:$4</a>');
 		return out.replace(/(^(#.*|\S)\n|\n#[^\n]*)/g, "");
 	},
+	getfiles: function() {
+		var res, files = [];
+		if ((res = this.get("Src")) && res.Info)
+			files = files.concat(res.Info.Files);
+		if ((res = this.get("Test")) && res.Info)
+			files = files.concat(res.Info.Files);
+		return files;
+	}
 });
 
 var Reports = Backbone.Collection.extend({model:Report});
@@ -36,7 +46,7 @@ var ReportListItem = base.ListItemView.extend({
 		'<span class="mode"><%= res && res.Mode || "" %></span> ',
 		'<a href="#file<%= get("Dir") %>"><%= get("Path") %></a> <%= res && res.Err || "" %>',
 		'</header>',
-		'<% if (o) { %><pre><%= o %></pre><% } %>',
+		'<% if (o) { %><pre><%= fixoutput(o) %></pre><% } %>',
 		'</div>',
 	].join('')),
 });

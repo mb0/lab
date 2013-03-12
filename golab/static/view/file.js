@@ -3,7 +3,7 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base", "conn", "view/editor"], function(base, conn, createEditor) {
+define(["base", "conn", "view/editor", "view/report"], function(base, conn, createEditor, report) {
 
 function pathcrumbs(path) {
 	if (!path) return [];
@@ -127,44 +127,34 @@ var FileView = Backbone.View.extend({
 var ViewManager = Backbone.View.extend({
 	initialize: function(opts) {
 		this.map = {}; // path: {view, annotations},
-		this.listenTo(conn, "msg:report msg:reports", this.checkreport);
+		this.listenTo(report.view.reports, "add change reset", this.checkreports);
 		this.route = "file/*path";
 		this.name = "openfile";
 	},
-	checkreport: function(reports) {
-		if (!_.isArray(reports)) reports = [reports];
+	checkreports: function() {
+		var reports = report.view.reports;
 		// check for markers and add to map
 		var re = /^(\/(?:[^\/\s]+\/)+(?:\S+?\.go))\:(\d+)\:(?:(\d+)\:)?(.*)$/;
-		var update = {};
-		_.each(reports, function(e) {
-			var res = null, out = [];
-			if (e.Src && e.Src.Result && e.Src.Result.Err) {
-				res = e.Src.Result;
-			} else if (e.Test && e.Test.Result && e.Test.Result.Err) {
-				res = e.Test.Result;
-			} else {
-				var clear = function(file) {
-					var path = e.Dir+"/"+file.Name;
-					var entry = this.map[path];
-					if (entry) {
+		var update = {}, path, entry;
+		reports.each(function(e) {
+			var res = e.getresult();
+			if (!e.haserrors(res)) {
+				_.each(e.getfiles(), function(file) {
+					path = e.get("Dir")+"/"+file.Name;
+					if ((entry = this.map[path])) {
 						entry.markers = [];
 						update[path] = entry;
 					}
-				};
-				if (e.Src && e.Src.Info)
-					_.each(e.Src.Info.Files, clear, this);
-				if (e.Test && e.Test.Info)
-					_.each(e.Test.Info.Files, clear, this);
+				}, this);
 				return;
 			}
-			if (res.Stdout) out = out.concat(res.Stdout.split("\n"));
-			if (res.Stderr) out = out.concat(res.Stderr.split("\n"));
-			var path, line, m;
+			var out = e.getoutput(res).split("\n");
+			var line, m;
 			for (var i = 0; i < out.length; i++) {
 				m = out[i].match(re);
 				if (!m) continue;
 				path = m[1], line = parseInt(m[2], 10);
-				var entry = this.map[path] || {view: null, markers: []};
+				entry = this.map[path] || {view: null, markers: []};
 				entry.markers.push({
 					row: line - 1,
 					column: (m[3] ? parseInt(m[3], 10) : 0) -1,
@@ -175,13 +165,13 @@ var ViewManager = Backbone.View.extend({
 				update[path] = entry;
 			}
 		}, this);
-		_.delay(function(work) {
-			_.each(work, function(e) {
-				if (!e.view || !e.view.editor) return;
-				var sess = e.view.editor.getSession();
-				sess.setAnnotations(e.markers);
-			});
-		}, 200, update);
+		_.delay(this.updateanotations, 200, update);
+	},
+	updateanotations: function(work) {
+		_.each(work, function(e) {
+			if (!e.view || !e.view.editor) return;
+			e.view.editor.getSession().setAnnotations(e.markers);
+		});
 	},
 	callback: function(path) {
 		var pl = this.splitline(path);

@@ -45,6 +45,20 @@ function getMode(path) {
 	return modesByName.text;
 }
 
+function getLastToken(sess, r, i, type, ignore) {
+	for (var toks = null; i >= 0 || r > 0; i--) {
+		if (toks === null || i < 0) {
+			toks = sess.getTokens(i < 0 ? --r : r);
+			i = toks.length -1;
+		}
+		if (i < 0) continue;
+		var tt = toks[i].type;
+		if (tt == type) return toks[i];
+		if (_.isArray(ignore) &&  _.contains(ignore, tt)) continue;
+		break;
+	}
+}
+
 return function(c, name, value) {
 	if (c.env && c.env.editor instanceof Editor)
 		return c.env.editor;
@@ -83,16 +97,8 @@ return function(c, name, value) {
 			var sess = e.editor.getSession();
 			var tok = sess.getTokenAt(pos.row, pos.column);
 			if (tok.type == "string") {
-				var toks = sess.getTokens(pos.row);
-				for (var i=tok.index-1,r=pos.row; i >= 0 || r > 0; i--) {
-					if (toks === null || i < 0) {
-						toks = sess.getTokens(--r);
-						i = toks.length -1;
-					}
-					if (i < 0) continue;
-					var tt = toks[i].type;
-					if (tt == "string" || tt == "text" || tt == "paren.lparen" || tt == "identifier") continue;
-					if (tt != "keyword" && toks[i].value != "import") break;
+				var kw = getLastToken(sess, pos.row, tok.index-1, "keyword", ["string", "text", "paren.lparen", "identifier"]);
+				if (kw && kw.value == "import") {
 					var path = tok.value.substr(1, tok.value.length-2);
 					Backbone.history.navigate("doc/"+ path, {trigger: true});
 				}

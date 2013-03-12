@@ -18,7 +18,13 @@ require.config({
 	}
 });
 
-define(["conn", "app", "view/report", "view/file", "view/godoc"], function(conn, app, report, file, godoc) {
+define(["conn", "app", "view/report", "view/file", "view/godoc", "unity"], function(conn, app, report, file, godoc) {
+
+$('<link>').attr({
+	type: "image/png",
+	rel:  "icon",
+	href: "/static/golab.png",
+}).appendTo($("head").first());
 
 $('<link>').attr({
 	type: "text/css",

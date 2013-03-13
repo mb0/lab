@@ -134,7 +134,7 @@ var ViewManager = Backbone.View.extend({
 	checkreports: function() {
 		var reports = report.view.reports;
 		// check for markers and add to map
-		var re = /^(\/(?:[^\/\s]+\/)+(?:\S+?\.go))\:(\d+)\:(?:(\d+)\:)?(.*)$/;
+		var re = /^((\/(?:[^\/\s]+\/)+)?(\S+?\.go))\:(\d+)\:(?:(\d+)\:)?(.*)$/;
 		var update = {}, path, entry;
 		reports.each(function(e) {
 			var res = e.getresult();
@@ -153,21 +153,22 @@ var ViewManager = Backbone.View.extend({
 			for (var i = 0; i < out.length; i++) {
 				m = out[i].match(re);
 				if (!m) continue;
-				path = m[1], line = parseInt(m[2], 10);
+				path = m[2] ? m[1] : e.get("Dir")+ "/"+ m[3];
+				line = parseInt(m[4], 10);
 				entry = this.map[path] || {view: null, markers: []};
 				entry.markers.push({
 					row: line - 1,
-					column: (m[3] ? parseInt(m[3], 10) : 0) -1,
-					text: m[4].trim(),
+					column: (m[5] ? parseInt(m[5], 10) : 0) -1,
+					text: m[6].trim(),
 					type: "error"
 				});
 				this.map[path] = entry;
 				update[path] = entry;
 			}
 		}, this);
-		_.delay(this.updateanotations, 200, update);
+		_.delay(this.updateannotations, 200, update);
 	},
-	updateanotations: function(work) {
+	updateannotations: function(work) {
 		_.each(work, function(e) {
 			if (!e.view || !e.view.editor) return;
 			e.view.editor.getSession().setAnnotations(e.markers);

@@ -69,7 +69,7 @@ func Test(pkg *Pkg) *Result {
 	if r.Err = cmd.Start(); r.Err != nil {
 		return r
 	}
-	r.Err = cmd.Wait()
+	wait(cmd, r)
 	return r
 }
 

@@ -56,15 +56,17 @@ new app.Router({
 	tiles: new app.Tiles([
 		{id: "about", uri: "about", name:'<i class="icon-beaker" title="about"></i>', view: new Html([
 			'<pre>',
-			'go live action builds',
-			'=====================\n',
-			'&copy; 2013 Martin Schnabel. All rights reserved.',
-			'BSD-style license.\n',
+			'<h3>go live action builds</h3>'+
+			'<a href="https://github.com/mb0/lab">golab</a> &copy; Martin Schnabel (<a href="https://github.com/mb0/lab/blob/master/LICENSE">BSD License</a>)\n',
 			'Other code used:',
-			' * github.com/garyburd/go-websocket (Apache License 2.0)',
-			' * Underscore, Zepto.js, Backbone.js (MIT License)',
-			' * require.js (BSD/MIT License)',
-			' * json2.js (public domain).',
+			' * <a href="https://github.com/garyburd/go-websocket">go-websocket</a> &copy; Gary Burd (<a href="http://www.apache.org/licenses/LICENSE-2.0.html">Apache License 2.0</a>)',
+			' * <a href="http://requirejs.org/">require.js</a> &copy; The Dojo Foundation (<a href="https://github.com/jrburke/requirejs/blob/master/LICENSE">BSD/MIT License</a>)',
+			' * <a href="https://github.com/douglascrockford/JSON-js/blob/master/json2.js">json2.js</a> by Douglas Crockford (public domain)',
+			' * <a href="http://underscorejs.org/">Underscore</a> &copy; Jeremy Ashkenas (<a href="https://github.com/documentcloud/underscore/blob/master/LICENSE">MIT License</a>)',
+			' * <a href="http://zeptojs.com/">Zepto</a> &copy; Thomas Fuchs (<a href="https://github.com/madrobby/zepto/blob/master/MIT-LICENSE">MIT License</a>)',
+			' * <a href="http://backbonejs.org/">Backbone</a> &copy Jeremy Ashkenas (<a href="http://github.com/documentcloud/backbone/blob/master/LICENSE">MIT License</a>)',
+			' * <a href="http://ace.ajax.org/">Ace</a> &copy; Ajax.org B.V. (<a href="https://github.com/ajaxorg/ace/blob/master/LICENSE">BSD License</a>)',
+			' * <a href="http://fortawesome.github.com/Font-Awesome">Font Awesome</a> by Dave Gandy (<a href="https://github.com/FortAwesome/Font-Awesome/blob/master/README.md">SIL, MIT and CC BY 3.0 Licese</a>)',
 			'</pre>'
 		].join('\n'))},
 		{id: "index", uri: "", name:'<i class="icon-circle" title="report"/></i>', view: report.view},

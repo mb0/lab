@@ -138,14 +138,14 @@ var ViewManager = Backbone.View.extend({
 		var update = {}, path, entry;
 		reports.each(function(e) {
 			var res = e.getresult();
+			_.each(e.getfiles(), function(file) {
+				path = e.get("Dir")+"/"+file.Name;
+				if ((entry = this.map[path])) {
+					entry.markers = [];
+					update[path] = entry;
+				}
+			}, this);
 			if (!e.haserrors(res)) {
-				_.each(e.getfiles(), function(file) {
-					path = e.get("Dir")+"/"+file.Name;
-					if ((entry = this.map[path])) {
-						entry.markers = [];
-						update[path] = entry;
-					}
-				}, this);
 				return;
 			}
 			var out = e.getoutput(res).split("\n");

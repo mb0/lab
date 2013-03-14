@@ -7,6 +7,7 @@ package gosrc
 import (
 	"bytes"
 	"fmt"
+	"go/build"
 	"io"
 	"os"
 	"os/exec"
@@ -15,6 +16,14 @@ import (
 )
 
 var godoctool = filepath.Join(runtime.GOROOT(), "bin/godoc")
+var godoctmpl string
+
+func init() {
+	tmpl := findTemplate()
+	if tmpl != "" {
+		godoctmpl = "-templates=" + tmpl
+	}
+}
 
 var snips = [][]byte{
 	[]byte(`<div id="nav">`),
@@ -27,7 +36,7 @@ func LoadHtmlDoc(path string, all bool) ([]byte, error) {
 		patharg += "?m=all"
 	}
 	var buf bytes.Buffer
-	err := rungodoc(&buf, "godoc", fmt.Sprintf("-url=/pkg/%s", patharg))
+	err := rungodoc(&buf, "godoc", fmt.Sprintf("-url=/pkg/%s", patharg), godoctmpl)
 	if err != nil {
 		return nil, err
 	}
@@ -59,4 +68,15 @@ func snip(in []byte) []byte {
 		}
 	}
 	return raw
+}
+
+func findTemplate() string {
+	for _, dir := range build.Default.SrcDirs() {
+		path := filepath.Join(dir, "github.com/mb0/lab/golab/gosrc")
+		_, err := os.Stat(path)
+		if err == nil {
+			return path
+		}
+	}
+	return ""
 }

@@ -12,7 +12,7 @@ body {
 ul { padding: 0; margin: 0; list-style: none;}
 nav ul ul {display: inline-block;}
 nav li { margin: 3px; display: inline-block;}
-a { text-decoration: none;}
+a { text-decoration: none; cursor: pointer;}
 pre { padding-left: 15px;}
 
 #app {

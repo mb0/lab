@@ -23,6 +23,7 @@ var Report = Backbone.Model.extend({
 	},
 	fixoutput: function(out) {
 		out = out.replace(/(\/([^\/\s]+\/)+(\S+?\.go))\:(\d+)(?:\:(\d+))?\:/g, '<a href="#file$1#L$4">$2$3:$4</a>');
+		out = out.replace(/\n(([\w_]+\.go)\:(\d+)(?:\:\d+)?\:)/g, '\n<a href="#file' + this.get('Dir') + '/$2#L$3">$1</a>');
 		return out.replace(/(^(#.*|\S)\n|\n#[^\n]*)/g, "");
 	},
 	getfiles: function() {

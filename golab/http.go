@@ -16,6 +16,7 @@ import (
 	"regexp"
 
 	_ "github.com/mb0/ace"
+	"github.com/mb0/lab"
 	"github.com/mb0/lab/golab/gosrc"
 	"github.com/mb0/lab/hub"
 	"github.com/mb0/lab/ws"
@@ -33,19 +34,20 @@ func init() {
 	}
 	log.Printf("starting http://%s/\n", *httpaddr)
 	serveclient()
-	lab.mods = append(lab.mods, &httpmod{})
+	lab.Register("http", &httpmod{})
 }
 
 type httpmod struct {
 	*hub.Hub
 }
 
-func (mod *httpmod) Start() {
+func (mod *httpmod) Run() {
+	src := lab.Mod("gosrc").(*gosrc.Src)
 	mod.Hub = hub.New(func(h *hub.Hub, m hub.Msg, id hub.Id) {
 		switch m.Head {
 		case hub.Signon.Head:
 			// send reports for all working packages
-			msg, err := hub.Marshal("reports", lab.src.AllReports())
+			msg, err := hub.Marshal("reports", src.AllReports())
 			if err != nil {
 				log.Println(err)
 				return
@@ -69,7 +71,7 @@ func (mod *httpmod) Start() {
 			h.SendMsg(m, id)
 		}
 	})
-	lab.src.SignalReports(func(r *gosrc.Report) {
+	src.SignalReports(func(r *gosrc.Report) {
 		m, err := hub.Marshal("report", r)
 		if err != nil {
 			log.Println(err)
@@ -84,16 +86,10 @@ func (mod *httpmod) Start() {
 	}
 }
 
-func (mod *httpmod) Filter(r *ws.Res) bool {
-	return false
-}
-
-func (mod *httpmod) Handle(op ws.Op, r *ws.Res) {
-}
-
 func apistat(path string) (hub.Msg, error) {
 	res := apires{ws.NewId(path), path, false}
-	if r := lab.ws.Res(res.Id); r != nil {
+	labws := lab.Mod("ws").(*ws.Ws)
+	if r := labws.Res(res.Id); r != nil {
 		r.Lock()
 		defer r.Unlock()
 		res.Name, res.IsDir = r.Name, r.Flag&ws.FlagDir != 0
@@ -170,7 +166,8 @@ var indexbytes = []byte(`<!DOCTYPE html>
 `)
 
 func findstatic() string {
-	for _, dir := range lab.dirs {
+	roots := lab.Mod("roots").([]string)
+	for _, dir := range roots {
 		path := filepath.Join(dir, "github.com/mb0/lab/golab/static")
 		_, err := os.Stat(path)
 		if err == nil {
@@ -181,7 +178,8 @@ func findstatic() string {
 }
 
 func findace() string {
-	for _, dir := range lab.dirs {
+	roots := lab.Mod("roots").([]string)
+	for _, dir := range roots {
 		path := filepath.Join(dir, "github.com/mb0/ace/lib/ace")
 		_, err := os.Stat(path)
 		if err == nil {
@@ -203,7 +201,8 @@ func raw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := r.URL.Path[4:]
-	if res := lab.ws.Res(ws.NewId(path)); res == nil || res.Flag&(ws.FlagDir|ws.FlagIgnore) != 0 {
+	labws := lab.Mod("ws").(*ws.Ws)
+	if res := labws.Res(ws.NewId(path)); res == nil || res.Flag&(ws.FlagDir|ws.FlagIgnore) != 0 {
 		http.NotFound(w, r)
 		return
 	}
@@ -245,7 +244,8 @@ func godoc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := r.URL.Path[5:]
-	pkg := lab.src.Find(path)
+	src := lab.Mod("gosrc").(*gosrc.Src)
+	pkg := src.Find(path)
 	if pkg == nil {
 		http.NotFound(w, r)
 		return

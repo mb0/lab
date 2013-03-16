@@ -5,13 +5,17 @@
 package gosrc
 
 import (
+	"flag"
 	"fmt"
+	"go/build"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/mb0/lab/ws"
 )
+
+var workpaths = flag.String("work", "./...", "path list of active packages. defaults to cwd")
 
 var FlagGo uint64 = 1 << 16
 
@@ -26,9 +30,8 @@ type Src struct {
 	reportsignal []func(*Report)
 }
 
-func New(srcids []ws.Id) *Src {
+func New() *Src {
 	s := &Src{
-		srcids: srcids,
 		pkgs:   make(map[ws.Id]*Pkg),
 		lookup: make(map[string]*Pkg),
 		queue:  ws.NewThrottle(time.Second),
@@ -38,8 +41,25 @@ func New(srcids []ws.Id) *Src {
 	p.Name = "C"
 	p.Src.Info = &Info{}
 	s.lookup["C"] = &p
-	go s.run()
 	return s
+}
+
+func (s *Src) Init() {
+	var ids []ws.Id
+	for _, d := range build.Default.SrcDirs() {
+		ids = append(ids, ws.NewId(d))
+	}
+	s.srcids = ids
+	for _, p := range filepath.SplitList(*workpaths) {
+		err := s.WorkOn(p)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+	}
+	s.SignalReports(func(r *Report) {
+		fmt.Println(r)
+	})
 }
 
 func (s *Src) Pkg(id ws.Id) *Pkg {
@@ -71,8 +91,6 @@ func (s *Src) AllReports() []*Report {
 	}
 	return reps
 }
-
-func (s *Src) Start() {}
 
 func (s *Src) Filter(r *ws.Res) bool {
 	if r.Flag&ws.FlagDir == 0 {
@@ -117,7 +135,7 @@ func (s *Src) Handle(op ws.Op, r *ws.Res) {
 	return
 }
 
-func (s *Src) run() {
+func (s *Src) Run() {
 	var timeout <-chan time.Time
 	for {
 		select {

@@ -10,96 +10,89 @@ import (
 	"go/build"
 	"os"
 	"os/signal"
-	"path/filepath"
 
+	"github.com/mb0/lab"
 	"github.com/mb0/lab/golab/gosrc"
 	"github.com/mb0/lab/ws"
 )
 
-var workpaths = flag.String("work", "./...", "path list of active packages. defaults to cwd")
-
-type Module interface {
-	Start()
-	Filter(*ws.Res) bool
-	Handle(ws.Op, *ws.Res)
+type golab struct {
+	roots    []string
+	ws       *ws.Ws
+	filters  []ws.Filter
+	handlers []ws.Handler
 }
 
-type labtype struct {
-	dirs []string
-	src  *gosrc.Src
-	ws   *ws.Ws
-	mods []Module
+func New() *golab {
+	golab := &golab{roots: build.Default.SrcDirs()}
+	golab.ws = ws.New(ws.Config{
+		CapHint: 8000,
+		Watcher: ws.NewInotify,
+		Filter:  golab,
+		Handler: golab,
+	})
+	lab.Register("roots", golab.roots)
+	lab.Register("ws", golab.ws)
+	return golab
 }
 
-var lab = &labtype{
-	dirs: build.Default.SrcDirs(),
+func (l *golab) Init() {
+	for _, mod := range lab.All() {
+		if _, ok := mod.(*golab); ok {
+			continue
+		}
+		if f, ok := mod.(ws.Filter); ok {
+			l.filters = append(l.filters, f)
+		}
+		if h, ok := mod.(ws.Handler); ok {
+			l.handlers = append(l.handlers, h)
+		}
+	}
+	fmt.Println("starting lab for:", l.roots)
+	for i, err := range ws.MountAll(l.ws, l.roots) {
+		if err != nil {
+			fmt.Printf("error mounting %s: %s\n", l.roots[i], err)
+		}
+	}
 }
 
-func (lab *labtype) Filter(r *ws.Res) bool {
-	l := len(r.Name)
-	if l == 0 {
+func (l *golab) Filter(r *ws.Res) bool {
+	if len(r.Name) == 0 {
 		return false
 	}
-	if r.Name[0] == '.' || r.Name[l-1] == '~' {
+	if r.Name[0] == '.' || r.Name[len(r.Name)-1] == '~' {
 		return true
 	}
-	if r.Flag&ws.FlagDir == 0 && l > 4 {
-		switch r.Name[l-4:] {
+	if r.Flag&ws.FlagDir == 0 && len(r.Name) > 4 {
+		switch r.Name[len(r.Name)-4:] {
 		case ".swp", ".swo":
 			return true
 		}
 	}
-	for _, mod := range lab.mods {
-		if mod.Filter(r) {
+	for _, f := range l.filters {
+		if f.Filter(r) {
 			return true
 		}
 	}
 	return false
 }
 
-func (lab *labtype) Handle(op ws.Op, r *ws.Res) {
+func (l *golab) Handle(op ws.Op, r *ws.Res) {
 	if r.Flag&ws.FlagIgnore != 0 {
 		return
 	}
-	for _, mod := range lab.mods {
-		mod.Handle(op, r)
+	for _, h := range l.handlers {
+		h.Handle(op, r)
 	}
 }
 
 func main() {
 	flag.Parse()
-	ids := make([]ws.Id, 0, len(lab.dirs))
-	for _, d := range lab.dirs {
-		ids = append(ids, ws.NewId(d))
-	}
-	lab.src = gosrc.New(ids)
-	lab.mods = append(lab.mods, lab.src)
-	lab.src.SignalReports(func(r *gosrc.Report) {
-		fmt.Println(r)
-	})
-	lab.ws = ws.New(ws.Config{
-		CapHint: 8000,
-		Watcher: ws.NewInotify,
-		Filter:  lab,
-		Handler: lab,
-	})
-	defer lab.ws.Close()
-	for _, p := range filepath.SplitList(*workpaths) {
-		err := lab.src.WorkOn(p)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-	}
-	fmt.Println("starting lab for:", lab.dirs)
-	for i, err := range ws.MountAll(lab.ws, lab.dirs) {
-		if err != nil {
-			fmt.Printf("error mounting %s: %s\n", lab.dirs[i], err)
-		}
-	}
-	for _, mod := range lab.mods {
-		go mod.Start()
-	}
+	golab := New()
+	defer golab.ws.Close()
+	lab.Register("gosrc", gosrc.New())
+	lab.Register("golab", golab)
+	lab.Start()
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, os.Kill)
 	<-c

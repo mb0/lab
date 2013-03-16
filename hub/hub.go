@@ -6,14 +6,25 @@ package hub
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
 type Id int64
 
+func (id *Id) MarshalJSON() ([]byte, error) {
+	str := fmt.Sprintf(`"%X"`, id)
+	return []byte(str), nil
+}
+func (id *Id) UnmarshalJSON(data []byte) error {
+	_, err := fmt.Sscanf(string(data), `"%X"`, id)
+	return err
+}
+
 const (
-	Router Id = 0
+	Route  Id = 0
 	Group  Id = 1 << 32
+	Except Id = 2 << 32
 )
 
 type Msg struct {
@@ -37,8 +48,8 @@ func (m *Msg) Unmarshal(v interface{}) error {
 }
 
 var (
-	Signon  = Msg{Head: "_signon"}
-	Signoff = Msg{Head: "_signon"}
+	Signon  = "_signon"
+	Signoff = "_signoff"
 )
 
 type Envelope struct {
@@ -46,25 +57,32 @@ type Envelope struct {
 	Msg
 }
 
-type Hub struct {
-	conns  map[Id]*conn
-	groups map[Id][]Id
-	router func(hub *Hub, msg Msg, from Id)
-
-	signon  chan *conn
-	signoff chan *conn
-	send    chan Envelope
+type Grouper interface {
+	GroupId() Id
+	Group() []Id
 }
 
-func New(router func(*Hub, Msg, Id)) *Hub {
-	h := &Hub{
-		conns:  make(map[Id]*conn),
-		groups: make(map[Id][]Id),
-		router: router,
+type Hub struct {
+	conns   map[Id]*conn
+	groups  map[Id]Grouper
+	signon  chan *conn
+	signoff chan *conn
+	Add     chan Grouper
+	Del     chan Grouper
+	Route   chan Envelope
+	Send    chan Envelope
+}
 
+func New() *Hub {
+	h := &Hub{
+		conns:   make(map[Id]*conn),
+		groups:  make(map[Id]Grouper),
 		signon:  make(chan *conn, 8),
 		signoff: make(chan *conn, 8),
-		send:    make(chan Envelope, 64),
+		Add:     make(chan Grouper, 8),
+		Del:     make(chan Grouper, 8),
+		Route:   make(chan Envelope, 64),
+		Send:    make(chan Envelope, 64),
 	}
 	go h.run()
 	return h
@@ -74,45 +92,57 @@ func (h *Hub) run() {
 		select {
 		case c := <-h.signon:
 			h.conns[c.id] = c
-			h.router(h, Signon, c.id)
+			h.Route <- Envelope{c.id, Route, Msg{Head: Signon}}
 		case c := <-h.signoff:
 			delete(h.conns, c.id)
 			c.close()
 			close(c.send)
-			h.router(h, Signoff, c.id)
-		case e := <-h.send:
-			switch e.To {
-			case Router:
-				h.router(h, e.Msg, e.From)
-			default:
-				h.sendto(e.Msg, e.To)
-			}
+			h.Route <- Envelope{c.id, Route, Msg{Head: Signoff}}
+		case g := <-h.Add:
+			h.groups[g.GroupId()] = g
+		case g := <-h.Del:
+			delete(h.groups, g.GroupId())
+		case e := <-h.Send:
+			h.send(e)
 		}
-	}
-}
-func (h *Hub) sendto(msg Msg, to Id) {
-	if to&Group == 0 {
-		if c, ok := h.conns[to]; ok {
-			c.send <- msg
-		}
-		return
-	}
-	if to^Group == 0 {
-		for _, c := range h.conns {
-			c.send <- msg
-		}
-		return
-	}
-	for _, id := range h.groups[to] {
-		h.sendto(msg, id)
 	}
 }
 
-func (h *Hub) Send(e Envelope) {
-	h.send <- e
+func (h *Hub) send(e Envelope) {
+	var except Id
+	if e.To&Except != 0 {
+		e.To ^= Except
+		except = e.From
+	}
+	switch {
+	case e.To == Route:
+		h.Route <- e
+	case e.To == Group:
+		for _, c := range h.conns {
+			if c.id != except {
+				c.send <- e.Msg
+			}
+		}
+	case e.To&Group != 0:
+		if g, ok := h.groups[e.To]; ok {
+			for _, to := range g.Group() {
+				if to == except {
+					continue
+				}
+				if c, ok := h.conns[to]; ok {
+					c.send <- e.Msg
+				}
+			}
+		}
+	default:
+		if c, ok := h.conns[e.To]; ok {
+			c.send <- e.Msg
+		}
+	}
 }
+
 func (h *Hub) SendMsg(m Msg, to Id) {
-	h.send <- Envelope{Router, to, m}
+	h.Send <- Envelope{Route, to, m}
 }
 
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -125,8 +155,12 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	h.signon <- c
-	go c.write()
-	c.read(h)
-	h.signoff <- c
+	select {
+	case h.signon <- c:
+		go c.write()
+		c.read(h)
+		h.signoff <- c
+	default:
+		http.Error(w, "Closing", http.StatusServiceUnavailable)
+	}
 }

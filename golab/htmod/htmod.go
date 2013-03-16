@@ -19,6 +19,7 @@ type htmod struct {
 	roots []string
 	ws    *ws.Ws
 	src   *gosrc.Src
+	docs  *docs
 	*hub.Hub
 }
 
@@ -35,34 +36,13 @@ func (mod *htmod) Init() {
 }
 
 func (mod *htmod) Run() {
-	mod.Hub = hub.New(func(h *hub.Hub, m hub.Msg, id hub.Id) {
-		switch m.Head {
-		case hub.Signon.Head:
-			// send reports for all working packages
-			msg, err := hub.Marshal("reports", mod.src.AllReports())
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			h.SendMsg(msg, id)
-		case "stat":
-			var path string
-			err := m.Unmarshal(&path)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			msg, err := mod.apistat(path)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			h.SendMsg(msg, id)
-		default:
-			// echo messages
-			h.SendMsg(m, id)
+	mod.Hub = hub.New()
+	mod.docs = &docs{all: make(map[ws.Id]*otdoc)}
+	go func() {
+		for e := range mod.Hub.Route {
+			mod.route(e.Msg, e.From)
 		}
-	})
+	}()
 	mod.src.SignalReports(func(r *gosrc.Report) {
 		m, err := hub.Marshal("report", r)
 		if err != nil {
@@ -78,39 +58,71 @@ func (mod *htmod) Run() {
 	}
 }
 
-func (mod *htmod) apistat(path string) (hub.Msg, error) {
-	res := apires{ws.NewId(path), path, false}
+func (mod *htmod) route(m hub.Msg, id hub.Id) {
+	var (
+		err error
+		msg hub.Msg
+	)
+	switch m.Head {
+	case hub.Signon:
+		// send reports for all working packages
+		msg, err = hub.Marshal("reports", mod.src.AllReports())
+	case "stat":
+		var path string
+		if err = m.Unmarshal(&path); err != nil {
+			break
+		}
+		msg, err = mod.stat(path)
+	case "subscribe", "unsubscribe", "revise", "publish":
+		mod.docroute(m, id)
+		return
+	default:
+		msg, err = hub.Marshal("unknown", m.Head)
+	}
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	mod.SendMsg(msg, id)
+}
+
+func (mod *htmod) stat(path string) (hub.Msg, error) {
+	res := apiRes{ws.NewId(path), path, false}
 	if r := mod.ws.Res(res.Id); r != nil {
 		r.Lock()
 		defer r.Unlock()
 		res.Name, res.IsDir = r.Name, r.Flag&ws.FlagDir != 0
 		if r.Dir != nil {
-			cs := make([]apires, 0, len(r.Children))
+			cs := make([]apiRes, 0, len(r.Children))
 			for _, c := range r.Children {
 				if c.Flag&ws.FlagIgnore == 0 {
-					cs = append(cs, apires{c.Id, c.Name, c.Flag&ws.FlagDir != 0})
+					cs = append(cs, apiRes{
+						c.Id,
+						c.Name,
+						c.Flag&ws.FlagDir != 0,
+					})
 				}
 			}
 			return hub.Marshal("stat", struct {
-				apires
+				apiRes
 				Path     string
-				Children []apires
+				Children []apiRes
 			}{res, path, cs})
 		}
 		return hub.Marshal("stat", struct {
-			apires
+			apiRes
 			Path string
 		}{res, path})
 	}
 	return hub.Marshal("stat.err", struct {
-		apires
+		apiRes
 		Path  string
 		Error string
 	}{res, path, "not found"})
 }
 
-type apires struct {
-	Id    ws.Id `json:",string"`
+type apiRes struct {
+	Id    ws.Id
 	Name  string
 	IsDir bool
 }

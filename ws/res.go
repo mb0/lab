@@ -33,6 +33,14 @@ func NewId(path string) Id {
 	h.Write([]byte(path))
 	return Id(h.Sum32())
 }
+func (id *Id) MarshalJSON() ([]byte, error) {
+	str := fmt.Sprintf(`"%X"`, id)
+	return []byte(str), nil
+}
+func (id *Id) UnmarshalJSON(data []byte) error {
+	_, err := fmt.Sscanf(string(data), `"%X"`, id)
+	return err
+}
 
 // Dir holds the full path and child resources for a directory resource.
 type Dir struct {

@@ -6,10 +6,20 @@ package hub
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
 type Id int64
+
+func (id *Id) MarshalJSON() ([]byte, error) {
+	str := fmt.Sprintf(`"%X"`, id)
+	return []byte(str), nil
+}
+func (id *Id) UnmarshalJSON(data []byte) error {
+	_, err := fmt.Sscanf(string(data), `"%X"`, id)
+	return err
+}
 
 const (
 	Route  Id = 0
@@ -53,30 +63,26 @@ type Grouper interface {
 }
 
 type Hub struct {
-	conns  map[Id]*conn
-	groups map[Id]Grouper
-
+	conns   map[Id]*conn
+	groups  map[Id]Grouper
 	signon  chan *conn
 	signoff chan *conn
-
-	Open  chan Grouper
-	Close chan Grouper
-	Route chan Envelope
-	Send  chan Envelope
+	Add     chan Grouper
+	Del     chan Grouper
+	Route   chan Envelope
+	Send    chan Envelope
 }
 
 func New() *Hub {
 	h := &Hub{
-		conns:  make(map[Id]*conn),
-		groups: make(map[Id]Grouper),
-
+		conns:   make(map[Id]*conn),
+		groups:  make(map[Id]Grouper),
 		signon:  make(chan *conn, 8),
 		signoff: make(chan *conn, 8),
-
-		Open:  make(chan Grouper, 8),
-		Close: make(chan Grouper, 8),
-		Route: make(chan Envelope, 64),
-		Send:  make(chan Envelope, 64),
+		Add:     make(chan Grouper, 8),
+		Del:     make(chan Grouper, 8),
+		Route:   make(chan Envelope, 64),
+		Send:    make(chan Envelope, 64),
 	}
 	go h.run()
 	return h
@@ -92,9 +98,9 @@ func (h *Hub) run() {
 			c.close()
 			close(c.send)
 			h.Route <- Envelope{c.id, Route, Msg{Head: Signoff}}
-		case g := <-h.Open:
+		case g := <-h.Add:
 			h.groups[g.GroupId()] = g
-		case g := <-h.Close:
+		case g := <-h.Del:
 			delete(h.groups, g.GroupId())
 		case e := <-h.Send:
 			h.send(e)

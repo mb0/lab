@@ -5,7 +5,6 @@
 package htmod
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -20,6 +19,7 @@ type htmod struct {
 	roots []string
 	ws    *ws.Ws
 	src   *gosrc.Src
+	docs  *docs
 	*hub.Hub
 }
 
@@ -37,6 +37,7 @@ func (mod *htmod) Init() {
 
 func (mod *htmod) Run() {
 	mod.Hub = hub.New()
+	mod.docs = &docs{all: make(map[ws.Id]*otdoc)}
 	go func() {
 		for e := range mod.Hub.Route {
 			mod.route(e.Msg, e.From)
@@ -72,6 +73,8 @@ func (mod *htmod) route(m hub.Msg, id hub.Id) {
 			break
 		}
 		msg, err = mod.stat(path)
+	case "subscribe", "revise", "unsubscribe":
+		msg, err = mod.docroute(m, id)
 	default:
 		msg, err = hub.Marshal("unknown", m.Head)
 	}
@@ -83,9 +86,8 @@ func (mod *htmod) route(m hub.Msg, id hub.Id) {
 }
 
 func (mod *htmod) stat(path string) (hub.Msg, error) {
-	id := ws.NewId(path)
-	res := apiRes{apiId(id), path, false}
-	if r := mod.ws.Res(id); r != nil {
+	res := apiRes{ws.NewId(path), path, false}
+	if r := mod.ws.Res(res.Id); r != nil {
 		r.Lock()
 		defer r.Unlock()
 		res.Name, res.IsDir = r.Name, r.Flag&ws.FlagDir != 0
@@ -94,7 +96,7 @@ func (mod *htmod) stat(path string) (hub.Msg, error) {
 			for _, c := range r.Children {
 				if c.Flag&ws.FlagIgnore == 0 {
 					cs = append(cs, apiRes{
-						apiId(c.Id),
+						c.Id,
 						c.Name,
 						c.Flag&ws.FlagDir != 0,
 					})
@@ -118,19 +120,8 @@ func (mod *htmod) stat(path string) (hub.Msg, error) {
 	}{res, path, "not found"})
 }
 
-type apiId uint64
-
-func (id *apiId) MarshalJSON() ([]byte, error) {
-	str := fmt.Sprintf(`"%X"`, id)
-	return []byte(str), nil
-}
-func (id *apiId) UnmarshalJSON(data []byte) error {
-	_, err := fmt.Sscanf(string(data), `"%X"`, id)
-	return err
-}
-
 type apiRes struct {
-	Id    apiId
+	Id    ws.Id
 	Name  string
 	IsDir bool
 }

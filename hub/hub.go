@@ -12,8 +12,9 @@ import (
 type Id int64
 
 const (
-	Route Id = 0
-	Group Id = 1 << 32
+	Route  Id = 0
+	Group  Id = 1 << 32
+	Except Id = 2 << 32
 )
 
 type Msg struct {
@@ -37,8 +38,8 @@ func (m *Msg) Unmarshal(v interface{}) error {
 }
 
 var (
-	Signon  = Msg{Head: "_signon"}
-	Signoff = Msg{Head: "_signon"}
+	Signon  = "_signon"
+	Signoff = "_signoff"
 )
 
 type Envelope struct {
@@ -46,76 +47,96 @@ type Envelope struct {
 	Msg
 }
 
+type Grouper interface {
+	GroupId() Id
+	Group() []Id
+}
+
 type Hub struct {
 	conns  map[Id]*conn
-	groups map[Id][]Id
+	groups map[Id]Grouper
 
 	signon  chan *conn
 	signoff chan *conn
-	route   chan Envelope
-	send    chan Envelope
+
+	Open  chan Grouper
+	Close chan Grouper
+	Route chan Envelope
+	Send  chan Envelope
 }
 
 func New() *Hub {
 	h := &Hub{
 		conns:  make(map[Id]*conn),
-		groups: make(map[Id][]Id),
+		groups: make(map[Id]Grouper),
 
 		signon:  make(chan *conn, 8),
 		signoff: make(chan *conn, 8),
-		route:   make(chan Envelope, 64),
-		send:    make(chan Envelope, 64),
+
+		Open:  make(chan Grouper, 8),
+		Close: make(chan Grouper, 8),
+		Route: make(chan Envelope, 64),
+		Send:  make(chan Envelope, 64),
 	}
 	go h.run()
 	return h
-}
-func (h *Hub) Route() <-chan Envelope {
-	return h.route
 }
 func (h *Hub) run() {
 	for {
 		select {
 		case c := <-h.signon:
 			h.conns[c.id] = c
-			h.route <- Envelope{c.id, Route, Signon}
+			h.Route <- Envelope{c.id, Route, Msg{Head: Signon}}
 		case c := <-h.signoff:
 			delete(h.conns, c.id)
 			c.close()
 			close(c.send)
-			h.route <- Envelope{c.id, Route, Signoff}
-		case e := <-h.send:
-			switch e.To {
-			case Route:
-				h.route <- e
-			default:
-				h.sendto(e.Msg, e.To)
-			}
+			h.Route <- Envelope{c.id, Route, Msg{Head: Signoff}}
+		case g := <-h.Open:
+			h.groups[g.GroupId()] = g
+		case g := <-h.Close:
+			delete(h.groups, g.GroupId())
+		case e := <-h.Send:
+			h.send(e)
 		}
-	}
-}
-func (h *Hub) sendto(msg Msg, to Id) {
-	if to&Group == 0 {
-		if c, ok := h.conns[to]; ok {
-			c.send <- msg
-		}
-		return
-	}
-	if to^Group == 0 {
-		for _, c := range h.conns {
-			c.send <- msg
-		}
-		return
-	}
-	for _, id := range h.groups[to] {
-		h.sendto(msg, id)
 	}
 }
 
-func (h *Hub) Send(e Envelope) {
-	h.send <- e
+func (h *Hub) send(e Envelope) {
+	var except Id
+	if e.To&Except != 0 {
+		e.To ^= Except
+		except = e.From
+	}
+	switch {
+	case e.To == Route:
+		h.Route <- e
+	case e.To == Group:
+		for _, c := range h.conns {
+			if c.id != except {
+				c.send <- e.Msg
+			}
+		}
+	case e.To&Group != 0:
+		if g, ok := h.groups[e.To]; ok {
+			for _, to := range g.Group() {
+				if to == except {
+					continue
+				}
+				if c, ok := h.conns[to]; ok {
+					c.send <- e.Msg
+				}
+			}
+		}
+	default:
+		if c, ok := h.conns[e.To]; ok {
+			c.send <- e.Msg
+		}
+	}
 }
+
 func (h *Hub) SendMsg(m Msg, to Id) {
-	h.send <- Envelope{Route, to, m}
+	h.Send <- Envelope{Route, to, m}
 }
 
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -128,8 +149,12 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	h.signon <- c
-	go c.write()
-	c.read(h)
-	h.signoff <- c
+	select {
+	case h.signon <- c:
+		go c.write()
+		c.read(h)
+		h.signoff <- c
+	default:
+		http.Error(w, "Closing", http.StatusServiceUnavailable)
+	}
 }

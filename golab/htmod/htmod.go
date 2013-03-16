@@ -5,6 +5,7 @@
 package htmod
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -37,7 +38,7 @@ func (mod *htmod) Init() {
 func (mod *htmod) Run() {
 	mod.Hub = hub.New()
 	go func() {
-		for e := range mod.Hub.Route() {
+		for e := range mod.Hub.Route {
 			mod.route(e.Msg, e.From)
 		}
 	}()
@@ -62,7 +63,7 @@ func (mod *htmod) route(m hub.Msg, id hub.Id) {
 		msg hub.Msg
 	)
 	switch m.Head {
-	case hub.Signon.Head:
+	case hub.Signon:
 		// send reports for all working packages
 		msg, err = hub.Marshal("reports", mod.src.AllReports())
 	case "stat":
@@ -70,7 +71,7 @@ func (mod *htmod) route(m hub.Msg, id hub.Id) {
 		if err = m.Unmarshal(&path); err != nil {
 			break
 		}
-		msg, err = mod.apistat(path)
+		msg, err = mod.stat(path)
 	default:
 		msg, err = hub.Marshal("unknown", m.Head)
 	}
@@ -81,39 +82,55 @@ func (mod *htmod) route(m hub.Msg, id hub.Id) {
 	mod.SendMsg(msg, id)
 }
 
-func (mod *htmod) apistat(path string) (hub.Msg, error) {
-	res := apires{ws.NewId(path), path, false}
-	if r := mod.ws.Res(res.Id); r != nil {
+func (mod *htmod) stat(path string) (hub.Msg, error) {
+	id := ws.NewId(path)
+	res := apiRes{apiId(id), path, false}
+	if r := mod.ws.Res(id); r != nil {
 		r.Lock()
 		defer r.Unlock()
 		res.Name, res.IsDir = r.Name, r.Flag&ws.FlagDir != 0
 		if r.Dir != nil {
-			cs := make([]apires, 0, len(r.Children))
+			cs := make([]apiRes, 0, len(r.Children))
 			for _, c := range r.Children {
 				if c.Flag&ws.FlagIgnore == 0 {
-					cs = append(cs, apires{c.Id, c.Name, c.Flag&ws.FlagDir != 0})
+					cs = append(cs, apiRes{
+						apiId(c.Id),
+						c.Name,
+						c.Flag&ws.FlagDir != 0,
+					})
 				}
 			}
 			return hub.Marshal("stat", struct {
-				apires
+				apiRes
 				Path     string
-				Children []apires
+				Children []apiRes
 			}{res, path, cs})
 		}
 		return hub.Marshal("stat", struct {
-			apires
+			apiRes
 			Path string
 		}{res, path})
 	}
 	return hub.Marshal("stat.err", struct {
-		apires
+		apiRes
 		Path  string
 		Error string
 	}{res, path, "not found"})
 }
 
-type apires struct {
-	Id    ws.Id `json:",string"`
+type apiId uint64
+
+func (id *apiId) MarshalJSON() ([]byte, error) {
+	str := fmt.Sprintf(`"%X"`, id)
+	return []byte(str), nil
+}
+func (id *apiId) UnmarshalJSON(data []byte) error {
+	_, err := fmt.Sscanf(string(data), `"%X"`, id)
+	return err
+}
+
+type apiRes struct {
+	Id    apiId
 	Name  string
 	IsDir bool
 }

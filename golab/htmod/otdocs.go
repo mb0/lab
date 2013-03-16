@@ -7,6 +7,8 @@ package htmod
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
 	"sync"
 
 	"github.com/mb0/lab/hub"
@@ -23,8 +25,9 @@ type rev struct {
 
 type otdoc struct {
 	sync.Mutex
-	ws.Id
 	*ot.Server
+	ws.Id
+	Path  string
 	group []hub.Id
 }
 
@@ -58,6 +61,9 @@ type apiRev struct {
 
 func (mod *htmod) Handle(op ws.Op, r *ws.Res) {
 	if op&(ws.Modify|ws.Delete) == 0 {
+		return
+	}
+	if r.Flag&(ws.FlagIgnore|ws.FlagDir) != 0 {
 		return
 	}
 	mod.docs.RLock()
@@ -99,13 +105,16 @@ func (mod *htmod) Handle(op ws.Op, r *ws.Res) {
 	}
 	// TODO diff data and broadcast ops
 	_ = data
+	log.Println("file changed ot doc must be updated.")
 }
 
-func (mod *htmod) docroute(m hub.Msg, from hub.Id) (hub.Msg, error) {
+func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 	var rev apiRev
+	to := from
 	err := m.Unmarshal(&rev)
 	if err != nil {
-		return m, err
+		log.Println(err)
+		return
 	}
 	id := ws.Id(rev.Id)
 	mod.docs.Lock()
@@ -113,17 +122,25 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) (hub.Msg, error) {
 	doc, found := mod.docs.all[id]
 	if !found {
 		if m.Head != "subscribe" {
-			return m, fmt.Errorf("res not found")
+			log.Println("doc not found")
+			return
 		}
-		res := mod.ws.Res(id)
-		if res == nil {
-			return m, fmt.Errorf("res not found")
+		r := mod.ws.Res(id)
+		if r == nil {
+			log.Println("res not found")
+			return
 		}
-		data, err := ioutil.ReadFile(res.Path())
+		if r.Flag&(ws.FlagIgnore|ws.FlagDir) != 0 {
+			log.Println("ignored or dir")
+			return
+		}
+		path := r.Path()
+		data, err := ioutil.ReadFile(path)
 		if err != nil {
-			return m, err
+			log.Println(err)
+			return
 		}
-		doc = &otdoc{Id: id, Server: &ot.Server{}}
+		doc = &otdoc{Id: id, Path: path, Server: &ot.Server{}}
 		doc.Doc = (*ot.Doc)(&data)
 		mod.docs.all[doc.Id] = doc
 		mod.Hub.Add <- doc
@@ -133,21 +150,10 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) (hub.Msg, error) {
 	switch m.Head {
 	case "subscribe":
 		doc.group = append(doc.group, hub.Id(rev.User))
-		return hub.Marshal("subscribe", apiDoc{
+		m, err = hub.Marshal("subscribe", apiDoc{
 			Id:  rev.Id,
 			Rev: doc.Rev(),
 			Doc: string(*doc.Doc),
-		})
-	case "revise":
-		ops, err := doc.Recv(rev.Rev, rev.Ops)
-		if err != nil {
-			return m, err
-		}
-		return hub.Marshal("revise", apiRev{
-			Id:   id,
-			Rev:  doc.Rev(),
-			Ops:  ops,
-			User: from,
 		})
 	case "unsubscribe":
 		for i, cid := range doc.group {
@@ -160,12 +166,53 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) (hub.Msg, error) {
 			}
 			break
 		}
-		return hub.Marshal("unsubscribe", apiRev{
+		m, err = hub.Marshal("unsubscribe", apiRev{
+			Id: id,
+		})
+	case "revise":
+		ops, err := doc.Recv(rev.Rev, rev.Ops)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		to = doc.GroupId()
+		m, err = hub.Marshal("revise", apiRev{
 			Id:   id,
+			Rev:  doc.Rev(),
+			Ops:  ops,
 			User: from,
 		})
 	case "publish":
-		// TODO write to file
+		// write to file
+		var f *os.File
+		f, err = os.OpenFile(doc.Path, os.O_WRONLY|os.O_TRUNC, 0)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		var n int
+		data := ([]byte)(*doc.Doc)
+		n, err = f.Write(data)
+		f.Close()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		f.Close()
+		if n < len(data) {
+			log.Println("short write")
+			return
+		}
+		to = doc.GroupId()
+		m, err = hub.Marshal("publish", apiRev{
+			Id:   id,
+			Rev:  doc.Rev(),
+			User: from,
+		})
 	}
-	return hub.Marshal("unknown", m.Head)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	mod.SendMsg(m, to)
 }

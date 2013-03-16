@@ -73,8 +73,9 @@ func (mod *htmod) route(m hub.Msg, id hub.Id) {
 			break
 		}
 		msg, err = mod.stat(path)
-	case "subscribe", "revise", "unsubscribe":
-		msg, err = mod.docroute(m, id)
+	case "subscribe", "unsubscribe", "revise", "publish":
+		mod.docroute(m, id)
+		return
 	default:
 		msg, err = hub.Marshal("unknown", m.Head)
 	}

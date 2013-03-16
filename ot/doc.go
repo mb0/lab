@@ -56,24 +56,27 @@ type Server struct {
 // Recv transforms, applies, and returns client ops and its revision.
 // An error is returned if the ops could not be applied.
 // Sending the derived ops to connected clients is the caller's responsibility.
-func (s *Server) Recv(rev int, ops Ops) (Ops, int, error) {
-	docrev := len(s.History)
-	if rev < 0 || docrev < rev {
-		return nil, docrev, fmt.Errorf("Revision not in history")
+func (s *Server) Recv(rev int, ops Ops) (Ops, error) {
+	if rev < 0 || len(s.History) < rev {
+		return nil, fmt.Errorf("Revision not in history")
 	}
 	var err error
 	// transform ops against all operations that happened since rev
 	for _, other := range s.History[rev:] {
 		if ops, _, err = Transform(ops, other); err != nil {
-			return nil, docrev, err
+			return nil, err
 		}
 	}
 	// apply to document
 	if err = s.Doc.Apply(ops); err != nil {
-		return nil, docrev, err
+		return nil, err
 	}
 	s.History = append(s.History, ops)
-	return ops, len(s.History), nil
+	return ops, nil
+}
+
+func (s *Server) Rev() int {
+	return len(s.History)
 }
 
 // Client represent a client document with synchronization mechanisms.

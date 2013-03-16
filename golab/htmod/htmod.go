@@ -38,7 +38,7 @@ func (mod *htmod) Run() {
 	mod.Hub = hub.New()
 	go func() {
 		for e := range mod.Hub.Route() {
-			mod.Route(e.Msg, e.From)
+			mod.route(e.Msg, e.From)
 		}
 	}()
 	mod.src.SignalReports(func(r *gosrc.Report) {
@@ -56,33 +56,29 @@ func (mod *htmod) Run() {
 	}
 }
 
-func (mod *htmod) Route(m hub.Msg, id hub.Id) {
+func (mod *htmod) route(m hub.Msg, id hub.Id) {
+	var (
+		err error
+		msg hub.Msg
+	)
 	switch m.Head {
 	case hub.Signon.Head:
 		// send reports for all working packages
-		msg, err := hub.Marshal("reports", mod.src.AllReports())
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		mod.SendMsg(msg, id)
+		msg, err = hub.Marshal("reports", mod.src.AllReports())
 	case "stat":
 		var path string
-		err := m.Unmarshal(&path)
-		if err != nil {
-			log.Println(err)
-			return
+		if err = m.Unmarshal(&path); err != nil {
+			break
 		}
-		msg, err := mod.apistat(path)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		mod.SendMsg(msg, id)
+		msg, err = mod.apistat(path)
 	default:
-		// echo messages
-		mod.SendMsg(m, id)
+		msg, err = hub.Marshal("unknown", m.Head)
 	}
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	mod.SendMsg(msg, id)
 }
 
 func (mod *htmod) apistat(path string) (hub.Msg, error) {

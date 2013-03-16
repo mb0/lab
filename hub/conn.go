@@ -62,7 +62,7 @@ func (c *conn) read(h *Hub) {
 			log.Println("error decoding message", err)
 			return
 		}
-		h.router(h, msg, c.id)
+		h.route <- Envelope{c.id, Route, msg}
 	}
 }
 

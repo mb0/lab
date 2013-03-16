@@ -12,8 +12,8 @@ import (
 type Id int64
 
 const (
-	Router Id = 0
-	Group  Id = 1 << 32
+	Route Id = 0
+	Group Id = 1 << 32
 )
 
 type Msg struct {
@@ -49,41 +49,44 @@ type Envelope struct {
 type Hub struct {
 	conns  map[Id]*conn
 	groups map[Id][]Id
-	router func(hub *Hub, msg Msg, from Id)
 
 	signon  chan *conn
 	signoff chan *conn
+	route   chan Envelope
 	send    chan Envelope
 }
 
-func New(router func(*Hub, Msg, Id)) *Hub {
+func New() *Hub {
 	h := &Hub{
 		conns:  make(map[Id]*conn),
 		groups: make(map[Id][]Id),
-		router: router,
 
 		signon:  make(chan *conn, 8),
 		signoff: make(chan *conn, 8),
+		route:   make(chan Envelope, 64),
 		send:    make(chan Envelope, 64),
 	}
 	go h.run()
 	return h
+}
+func (h *Hub) Route() <-chan Envelope {
+	return h.route
 }
 func (h *Hub) run() {
 	for {
 		select {
 		case c := <-h.signon:
 			h.conns[c.id] = c
-			h.router(h, Signon, c.id)
+			h.route <- Envelope{c.id, Route, Signon}
 		case c := <-h.signoff:
 			delete(h.conns, c.id)
 			c.close()
 			close(c.send)
-			h.router(h, Signoff, c.id)
+			h.route <- Envelope{c.id, Route, Signoff}
 		case e := <-h.send:
 			switch e.To {
-			case Router:
-				h.router(h, e.Msg, e.From)
+			case Route:
+				h.route <- e
 			default:
 				h.sendto(e.Msg, e.To)
 			}
@@ -112,7 +115,7 @@ func (h *Hub) Send(e Envelope) {
 	h.send <- e
 }
 func (h *Hub) SendMsg(m Msg, to Id) {
-	h.send <- Envelope{Router, to, m}
+	h.send <- Envelope{Route, to, m}
 }
 
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {

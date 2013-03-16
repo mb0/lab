@@ -23,17 +23,25 @@ type golab struct {
 	handlers []ws.Handler
 }
 
-func New() *golab {
-	golab := &golab{roots: build.Default.SrcDirs()}
+func main() {
+	flag.Parse()
+	roots := build.Default.SrcDirs()
+	lab.Register("roots", roots)
+	lab.Register("gosrc", gosrc.New())
+	golab := &golab{roots: roots}
 	golab.ws = ws.New(ws.Config{
 		CapHint: 8000,
 		Watcher: ws.NewInotify,
 		Filter:  golab,
 		Handler: golab,
 	})
-	lab.Register("roots", golab.roots)
+	defer golab.ws.Close()
 	lab.Register("ws", golab.ws)
-	return golab
+	lab.Register("golab", golab)
+	lab.Start()
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, os.Kill)
+	<-c
 }
 
 func (l *golab) Init() {
@@ -84,16 +92,4 @@ func (l *golab) Handle(op ws.Op, r *ws.Res) {
 	for _, h := range l.handlers {
 		h.Handle(op, r)
 	}
-}
-
-func main() {
-	flag.Parse()
-	golab := New()
-	defer golab.ws.Close()
-	lab.Register("gosrc", gosrc.New())
-	lab.Register("golab", golab)
-	lab.Start()
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, os.Kill)
-	<-c
 }

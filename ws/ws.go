@@ -36,6 +36,17 @@ const (
 	FsMask Op = 0xF0
 )
 
+// Filter checks new resources and returns true if the resources should be flagged as ignored.
+// Resources with FlagIgnore remain in the workspace. Ignored directories are not read.
+type Filter interface {
+	Filter(*Res) bool
+}
+
+// Handler handles resource operation events.
+type Handler interface {
+	Handle(Op, *Res)
+}
+
 // Config contains the configuration used to create new workspaces.
 type Config struct {
 	// CapHint hints the expected peak resource capacity.
@@ -43,24 +54,24 @@ type Config struct {
 	// Watcher returns a new watcher given workspace control.
 	// Mounting a path results in a snapshot if no Watcher is configured.
 	Watcher func(Controller) (Watcher, error)
-	// Handler handles resource operation events if set.
-	Handler func(Op, *Res)
+	// Handler handles events if set.
+	Handler Handler
 	// Filter filters resources if set.
-	// If filter returns true the resource is flagged with FlagIgnore but remains in the workspace.
-	// Ignored directories are not read.
-	Filter func(*Res) bool
+	Filter Filter
 }
 
-func (c *Config) filldefaullts() {
-	if c.Filter == nil {
-		c.Filter = nilfilter
+func (c *Config) filter(r *Res) bool {
+	if c.Filter != nil {
+		return c.Filter.Filter(r)
 	}
-	if c.Handler == nil {
-		c.Handler = nilhandler
+	return false
+}
+
+func (c *Config) handle(op Op, r *Res) {
+	if c.Handler != nil {
+		c.Handler.Handle(op, r)
 	}
 }
-func nilhandler(Op, *Res) {}
-func nilfilter(*Res) bool { return false }
 
 // Controller provides an interface for the watcher to modify the workspace.
 type Controller interface {
@@ -78,7 +89,6 @@ type Ws struct {
 
 // New creates a workspace with configuration c.
 func New(c Config) *Ws {
-	c.filldefaullts()
 	var name string
 	if runtime.GOOS != "windows" {
 		name = "/"
@@ -102,7 +112,7 @@ func (w *Ws) Mount(path string) (*Res, error) {
 	if err != nil {
 		return r, err
 	}
-	if w.config.Filter(r) {
+	if w.config.filter(r) {
 		r.Flag |= FlagIgnore
 		return r, nil
 	}
@@ -154,7 +164,7 @@ func (w *Ws) mount(path string) (*Res, error) {
 	r.Parent = w.logicalParent(d)
 	r.Parent.Children = insert(r.Parent.Children, r)
 	w.all[id] = r
-	w.config.Handler(Add, r)
+	w.config.handle(Add, r)
 	return r, nil
 }
 
@@ -215,7 +225,7 @@ func split(path string) []string {
 	}
 	return parts
 }
-func read(r *Res, filter func(*Res) bool) error {
+func read(r *Res, filter Filter) error {
 	f, err := os.Open(r.Dir.Path)
 	if err != nil {
 		return err
@@ -233,7 +243,7 @@ func read(r *Res, filter func(*Res) bool) error {
 	sort.Sort(byTypeAndName(children))
 	r.Children = children
 	for _, c := range children {
-		if filter(c) {
+		if filter != nil && filter.Filter(c) {
 			c.Flag |= FlagIgnore
 			continue
 		}
@@ -248,7 +258,7 @@ func read(r *Res, filter func(*Res) bool) error {
 func (w *Ws) addAllChildren(fsop Op, r *Res) {
 	for _, c := range r.Children {
 		w.all[c.Id] = c
-		w.config.Handler(fsop|Add, c)
+		w.config.handle(fsop|Add, c)
 		if c.Flag&(FlagDir|FlagIgnore) == FlagDir {
 			w.addAllChildren(fsop, c)
 		}
@@ -259,5 +269,5 @@ func (w *Ws) addAllChildren(fsop Op, r *Res) {
 			fmt.Println(err)
 		}
 	}
-	w.config.Handler(fsop|Change, r)
+	w.config.handle(fsop|Change, r)
 }

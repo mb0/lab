@@ -37,7 +37,7 @@ func (w *ctrl) Control(op Op, id Id, name string) error {
 	return nil
 }
 func (w *ctrl) change(fsop Op, r *Res) error {
-	w.config.Handler(fsop|Change, r)
+	w.config.handle(fsop|Change, r)
 	return nil
 }
 func (w *ctrl) remove(fsop Op, r *Res) error {
@@ -62,7 +62,7 @@ func (w *ctrl) remove(fsop Op, r *Res) error {
 	}
 	for i := len(rm) - 1; i >= 0; i-- {
 		c := rm[i]
-		w.config.Handler(fsop|Remove, c)
+		w.config.handle(fsop|Remove, c)
 		if c.Dir != nil {
 			c.Children = nil
 		}
@@ -83,17 +83,17 @@ func (w *ctrl) add(fsop Op, p *Res, name string) error {
 	p.Children = insert(p.Children, r)
 	w.all[r.Id] = r
 	switch {
-	case w.config.Filter(r):
+	case w.config.filter(r):
 		r.Flag |= FlagIgnore
 		fallthrough
 	case r.Dir == nil:
-		w.config.Handler(fsop|Add, r)
+		w.config.handle(fsop|Add, r)
 		return nil
 	}
 	if err = read(r, w.config.Filter); err != nil {
 		return err
 	}
-	w.config.Handler(fsop|Add, r)
+	w.config.handle(fsop|Add, r)
 	(*Ws)(w).addAllChildren(fsop, r)
 	return nil
 }

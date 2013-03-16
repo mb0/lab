@@ -24,16 +24,18 @@ type Module interface {
 	Handle(ws.Op, *ws.Res)
 }
 
-var lab = &struct {
+type labtype struct {
 	dirs []string
 	src  *gosrc.Src
 	ws   *ws.Ws
 	mods []Module
-}{
+}
+
+var lab = &labtype{
 	dirs: build.Default.SrcDirs(),
 }
 
-func filter(r *ws.Res) bool {
+func (lab *labtype) Filter(r *ws.Res) bool {
 	l := len(r.Name)
 	if l == 0 {
 		return false
@@ -55,7 +57,7 @@ func filter(r *ws.Res) bool {
 	return false
 }
 
-func handler(op ws.Op, r *ws.Res) {
+func (lab *labtype) Handle(op ws.Op, r *ws.Res) {
 	if r.Flag&ws.FlagIgnore != 0 {
 		return
 	}
@@ -78,8 +80,8 @@ func main() {
 	lab.ws = ws.New(ws.Config{
 		CapHint: 8000,
 		Watcher: ws.NewInotify,
-		Filter:  filter,
-		Handler: handler,
+		Filter:  lab,
+		Handler: lab,
 	})
 	defer lab.ws.Close()
 	for _, p := range filepath.SplitList(*workpaths) {

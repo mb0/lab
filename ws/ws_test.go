@@ -53,21 +53,26 @@ func TestWalkSrc(t *testing.T) {
 	}
 	t.Log(gcandstat())
 }
+
+type testhandler chan struct {
+	Op
+	*Res
+}
+
+func (h testhandler) Handle(op Op, r *Res) {
+	h <- struct {
+		Op
+		*Res
+	}{op, r}
+}
+
 func TestWatch(t *testing.T) {
 	dir, err := ioutil.TempDir("", "wsinotify")
 	if err != nil {
 		t.Fatal("failed to create temp dir")
 	}
-	events := make(chan struct {
-		Op
-		*Res
-	}, 10)
-	w := New(Config{CapHint: 100, Watcher: NewInotify, Handler: func(op Op, r *Res) {
-		events <- struct {
-			Op
-			*Res
-		}{op, r}
-	}})
+	events := make(testhandler, 10)
+	w := New(Config{CapHint: 100, Watcher: NewInotify, Handler: events})
 	defer w.Close()
 	fail := func(msg string, err error) {
 		if err != nil {

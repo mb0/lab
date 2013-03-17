@@ -30,7 +30,9 @@ var Conn = Backbone.Model.extend({
 			c.trigger("open", e);
 			if (c.queue) {
 				console.log("work", c.queue);
-				_.each(c.queue, c.wsconn.send, c.wsconn);
+				_.each(c.queue, function(e) {
+					c.wsconn.send(e);
+				});
 				c.queue = [];
 			}
 		};

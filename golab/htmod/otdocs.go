@@ -149,7 +149,7 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 	defer doc.Unlock()
 	switch m.Head {
 	case "subscribe":
-		doc.group = append(doc.group, hub.Id(rev.User))
+		doc.group = append(doc.group, hub.Id(from))
 		m, err = hub.Marshal("subscribe", apiDoc{
 			Id:  rev.Id,
 			Rev: doc.Rev(),
@@ -157,7 +157,7 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 		})
 	case "unsubscribe":
 		for i, cid := range doc.group {
-			if cid != rev.User {
+			if cid != from {
 				continue
 			}
 			doc.group = append(doc.group[:i], doc.group[i+1:]...)

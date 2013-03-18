@@ -12,7 +12,7 @@ import (
 
 type Id int64
 
-func (id *Id) MarshalJSON() ([]byte, error) {
+func (id Id) MarshalJSON() ([]byte, error) {
 	str := fmt.Sprintf(`"%X"`, id)
 	return []byte(str), nil
 }

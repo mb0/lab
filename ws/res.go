@@ -33,7 +33,7 @@ func NewId(path string) Id {
 	h.Write([]byte(path))
 	return Id(h.Sum32())
 }
-func (id *Id) MarshalJSON() ([]byte, error) {
+func (id Id) MarshalJSON() ([]byte, error) {
 	str := fmt.Sprintf(`"%X"`, id)
 	return []byte(str), nil
 }

@@ -39,17 +39,30 @@ var Report = Backbone.Model.extend({
 var Reports = Backbone.Collection.extend({model:Report});
 
 var ReportListItem = base.ListItemView.extend({
+	events: {
+		"click .status": "toggleReport",
+	},
 	template: _.template([
 		'<% var res = getresult(); var err = haserrors(res), o = getoutput(res) %>',
 		'<div class="report <%- err ? "fail" : "ok" %>">',
 		'<header>',
-		'<span class="status"><%- err ? "FAIL" : "OK" %></span> ',
+		'<span class="status">',
+		'<%- err ? "FAIL" : "OK" %>',
+		'<% if (o) { %><i class="icon icon-plus"></i><% } %>',
+		'</span> ',
 		'<span class="mode"><%= res && res.Mode || "" %></span> ',
 		'<a href="#file<%= get("Dir") %>"><%= get("Path") %></a> <%= res && res.Err || "" %>',
 		'</header>',
-		'<% if (o) { %><pre><%= fixoutput(o) %></pre><% } %>',
+		'<% if (o) { %><pre <%- err ? "" : \'style="display:none"\'',
+		'%>><%= fixoutput(o) %></pre><% } %>',
 		'</div>',
 	].join('')),
+	toggleReport: function(e) {
+		this.$(".report pre").toggle();
+		this.$(".report i")
+			.toggleClass("icon-plus")
+			.toggleClass("icon-minus");
+	}
 });
 
 var ReportList = base.ListView.extend({

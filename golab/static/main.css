@@ -96,8 +96,18 @@ pre { padding-left: 15px;}
 }
 .report .status {
 	display: inline-block;
-	width: 40px;
+	width: 60px;
 	padding-left: 5px;
+	cursor: default;
+}
+.report .status .icon {
+	float: right;
+	padding: 7px;
+	font-size: 9px;
+	cursor: pointer;
+}
+.report pre {
+	display: none;
 }
 .report .mode {
 	display: inline-block;
@@ -106,7 +116,7 @@ pre { padding-left: 15px;}
 }
 .report pre {
 	background-color: rgba(50, 50, 50, 0.75);
-	margin: 0 0 0 45px;
+	margin: 0 0 0 65px;
 	padding-left: 10px;
 }
 .file {

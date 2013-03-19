@@ -3,7 +3,8 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base", "conn", "view/editor", "view/report"], function(base, conn, createEditor, report) {
+define(["base", "conn", "view/editor", "view/report", "view/sotdoc", "ace/document"],
+function(base, conn, createEditor, report, sotdoc, acedoc) {
 
 function pathcrumbs(path) {
 	if (!path) return [];
@@ -48,7 +49,6 @@ var FileListItem = base.ListItemView.extend({
 var FileList = base.ListView.extend({
 	itemView: FileListItem,
 });
-
 var FileView = Backbone.View.extend({
 	tagName: "section",
 	className: "file",
@@ -57,10 +57,11 @@ var FileView = Backbone.View.extend({
 		this.model = new File({Path:opts.Path});
 		this.content = $('<div class="content">');
 		this.editor = null;
+		this.doc = null;
 		this.line = 0;
 		this.children = new Files();
 		this.listview = new FileList({collection:this.children});
-		this.listenTo(conn, "msg:stat msg:stat.err", this.openMsg);
+		this.listenTo(conn, "msg:stat msg:stat.err", this.onstat);
 		this.listenTo(this.model, "change", this.render);
 		this.listenTo(this.model, "remove", this.remove);
 		conn.send("stat", opts.Path);
@@ -70,9 +71,10 @@ var FileView = Backbone.View.extend({
 		this.$el.append(this.content);
 		return this;
 	},
-	openMsg: function(data) {
+	onstat: function(data) {
 		var view = this;
-		if (data.Path != this.model.get("Path")) {
+		var path = this.model.get("Path")
+		if (data.Path != path) {
 			return;
 		}
 		this.model.set(data);
@@ -83,35 +85,48 @@ var FileView = Backbone.View.extend({
 			this.content.children().remove();
 			this.content.append(this.listview.$el);
 		} else {
-			var path = data.Path;
-			$.get("/raw"+path, function(data){
-				view.editor = createEditor(view.content[0], path, data);
-				view.editor.commands.addCommands([{
-					name:"save",
-					bindKey: {win: "Ctrl-S", mac:"Command-S"},
-					exec: function(editor, line) {
-						view.save();
-					},
-					readOnly: false
-				}]);
-				if (view.line > 0) {
-					view.setLine(view.line);
-				}
-			});
+			this.listenTo(conn, "msg:subscribe", this.onsub);
+			this.listenTo(conn, "msg:publish", this.onpub);
+			this.listenTo(conn, "msg:revise", this.onrev);
+			conn.send("subscribe", {Id: data.Id});
 		}
 	},
-	save: function() {
+	onsub: function(data) {
+		if (data.Id != this.model.get("Id")) return;
+		var text = data.Ops && data.Ops[0] || "";
+		this.doc = new acedoc.Document(text);
+		this.doc.user = data.User;
+		var sdoc = sotdoc.install(data.Id, data.Rev, this.doc);
 		var path = this.model.get("Path");
-		console.log("save", path);
-		$.ajax({
-			type: "POST",
-			url:  "/raw"+path,
-			data: this.editor.getSession().getValue(),
-			processData: false,
-			success: function(resp) {
-				console.log("save success", path);
-			},
+		this.editor = createEditor(this.content[0], path, this.doc);
+		this.doc.on("sotops", function(e) {
+			conn.send("revise", e.data);
 		});
+		this.editor.commands.addCommands([{
+			name:"save",
+			bindKey: {win: "Ctrl-S", mac:"Command-S"},
+			exec: function(editor, line) {
+				console.log("publish", path);
+				conn.send("publish", {Id: sdoc.id});
+			},
+			readOnly: false
+		}]);
+		if (this.line > 0) {
+			this.setLine(this.line);
+		}
+	},
+	onpub: function(data) {
+		if (this.doc && data.Id != this.doc.sotdoc.id) return;
+		console.log("saved", this.model.get("Path"));
+	},
+	onrev: function(data) {
+		if (this.doc && data.Id != this.doc.sotdoc.id) return;
+		var err = null;
+		if (this.doc.user && this.doc.user == data.User) {
+			err = sotdoc.ackOps(this.doc, data.Ops);
+		} else {
+			err = sotdoc.recvOps(this.doc, data.Ops);
+		}
 	},
 	setLine: function(l) {
 		if (this.editor != null) {

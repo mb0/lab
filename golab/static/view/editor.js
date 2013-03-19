@@ -3,12 +3,13 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["require", "ace/ace", "ace/editor", "ace/virtual_renderer", "ace/multi_select"], function(require, ace) {
+define(["require", "ace/ace", "ace/editor", "ace/virtual_renderer", "ace/multi_select", "ace/lib/event"],
+function(require, ace) {
 
-var Renderer = require("ace/virtual_renderer").VirtualRenderer,
-    Editor = require("ace/editor").Editor,
-    MultiSelect = require("ace/multi_select").MultiSelect,
-    event = require("ace/lib/event");
+var	Editor = require("ace/editor").Editor,
+	Renderer = require("ace/virtual_renderer").VirtualRenderer,
+	MultiSelect = require("ace/multi_select").MultiSelect,
+	event = require("ace/lib/event");
 
 var modesByName = {
 	css: "css",

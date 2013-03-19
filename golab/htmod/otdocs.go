@@ -18,11 +18,6 @@ import (
 
 var DocGroup hub.Id = (1 << 40) | hub.Group
 
-type rev struct {
-	Rev int
-	Doc string
-}
-
 type otdoc struct {
 	sync.Mutex
 	*ot.Server
@@ -47,11 +42,6 @@ type docs struct {
 	all map[ws.Id]*otdoc
 }
 
-type apiDoc struct {
-	Id  ws.Id
-	Rev int
-	Doc string
-}
 type apiRev struct {
 	Id   ws.Id
 	Rev  int
@@ -116,16 +106,15 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 		log.Println(err)
 		return
 	}
-	id := ws.Id(rev.Id)
 	mod.docs.Lock()
 	defer mod.docs.Unlock()
-	doc, found := mod.docs.all[id]
+	doc, found := mod.docs.all[rev.Id]
 	if !found {
 		if m.Head != "subscribe" {
 			log.Println("doc not found")
 			return
 		}
-		r := mod.ws.Res(id)
+		r := mod.ws.Res(rev.Id)
 		if r == nil {
 			log.Println("res not found")
 			return
@@ -140,7 +129,7 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 			log.Println(err)
 			return
 		}
-		doc = &otdoc{Id: id, Path: path, Server: &ot.Server{}}
+		doc = &otdoc{Id: rev.Id, Path: path, Server: &ot.Server{}}
 		doc.Doc = (*ot.Doc)(&data)
 		mod.docs.all[doc.Id] = doc
 		mod.Hub.Add <- doc
@@ -149,11 +138,12 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 	defer doc.Unlock()
 	switch m.Head {
 	case "subscribe":
-		doc.group = append(doc.group, hub.Id(from))
-		m, err = hub.Marshal("subscribe", apiDoc{
-			Id:  rev.Id,
-			Rev: doc.Rev(),
-			Doc: string(*doc.Doc),
+		doc.group = append(doc.group, from)
+		m, err = hub.Marshal("subscribe", apiRev{
+			Id:   rev.Id,
+			Rev:  doc.Rev(),
+			Ops:  ot.Ops{ot.Op{S: string(*doc.Doc)}},
+			User: from,
 		})
 	case "unsubscribe":
 		for i, cid := range doc.group {
@@ -167,7 +157,7 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 			break
 		}
 		m, err = hub.Marshal("unsubscribe", apiRev{
-			Id: id,
+			Id: rev.Id,
 		})
 	case "revise":
 		ops, err := doc.Recv(rev.Rev, rev.Ops)
@@ -177,7 +167,7 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 		}
 		to = doc.GroupId()
 		m, err = hub.Marshal("revise", apiRev{
-			Id:   id,
+			Id:   rev.Id,
 			Rev:  doc.Rev(),
 			Ops:  ops,
 			User: from,
@@ -205,7 +195,7 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 		}
 		to = doc.GroupId()
 		m, err = hub.Marshal("publish", apiRev{
-			Id:   id,
+			Id:   rev.Id,
 			Rev:  doc.Rev(),
 			User: from,
 		})

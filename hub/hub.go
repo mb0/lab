@@ -44,7 +44,11 @@ func Marshal(head string, v interface{}) (m Msg, err error) {
 }
 
 func (m *Msg) Unmarshal(v interface{}) error {
-	return json.Unmarshal([]byte(*m.Data), v)
+	var b []byte
+	if m.Data != nil {
+		b = []byte(*m.Data)
+	}
+	return json.Unmarshal(b, v)
 }
 
 var (

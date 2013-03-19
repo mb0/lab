@@ -124,13 +124,13 @@ func sign(n int) int {
 // Compose returns an operation sequence composed from the consecutive ops a and b.
 // An error is returned if the composition failed.
 func Compose(a, b Ops) (ab Ops, err error) {
+	if len(a) == 0 || len(b) == 0 {
+		return
+	}
 	reta, _, ins := a.Count()
 	retb, del, _ := b.Count()
 	if reta+ins != retb+del {
 		err = fmt.Errorf("Compose requires consecutive ops.")
-		return
-	}
-	if len(a) == 0 || len(b) == 0 {
 		return
 	}
 	ia, oa := getop(0, a)

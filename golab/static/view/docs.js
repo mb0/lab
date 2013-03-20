@@ -3,12 +3,13 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base", "conn", "view/sotdoc", "ace/document"],
-function(base, conn, sotdoc, document) {
+define(["base", "conn", "lib/sotdoc"],
+function(base, conn, sotdoc) {
 
 var icons = {
 	subscribe: "icon-cloud-download",
 	waiting:   "icon-cloud-upload",
+	received:  "icon-cloud-download",
 	published: "icon-hdd",
 };
 
@@ -18,8 +19,7 @@ function getIcon(name, defaultIcon) {
 	return '<i class="'+ icon +'"></i>';
 }
 
-var Doc = Backbone.Model.extend({
-	idAttribute: "Id", // Path, Rev, User, Status, Ace
+var Doc = sotdoc.Doc.extend({
 	icon: function() {
 		return getIcon(this.get("Status"), "icon-cloud");
 	},
@@ -62,16 +62,10 @@ var DocsView = Backbone.View.extend({
 			return;
 		}
 		var text = data.Ops && data.Ops[0] || "";
-		data.Ace = new document.Document(text);
-		data.Status = "";
-		delete data.Ops;
-
-		sotdoc.install(data.Id, data.Rev, data.Ace);
-		data.Ace.on("sotops", function(e) {
-			doc.set("Status", "waiting");
-			conn.send("revise", e.data);
+		doc.createAce(data.Rev, data.User, text);
+		doc.on("ops", function(doc, ops) {
+			conn.send("revise", {Id: doc.id, Rev: doc.get("Rev"), Ops: ops});
 		});
-		doc.set(data);
 	},
 	onPublish: function(data) {
 		var doc = this.collection.get(data.Id);
@@ -87,20 +81,15 @@ var DocsView = Backbone.View.extend({
 			console.log("revise unknown document", data);
 			return;
 		}
-		var err, acedoc = doc.get("Ace");
+		var err = null;
 		if (doc.get("User") === data.User) {
-			err = sotdoc.ackOps(acedoc, data.Ops);
+			err = doc.ackOps(data.Ops);
 		} else {
-			err = sotdoc.recvOps(acedoc, data.Ops);
+			err = doc.recvOps(data.Ops);
 		}
 		if (err !== null) {
 			console.log("revise error", err);
-			return;
 		}
-		var update = {Rev: acedoc.sotdoc.rev};
-		if (acedoc.sotdoc.wait === null)
-			update.Status = "";
-		doc.set(update);
 	},
 	onUnsubscribe: function(data) {
 		var doc = this.collection.get(data.Id);
@@ -116,9 +105,9 @@ var view = new DocsView({collection:docs});
 return {
 	view: view,
 	subscribe: function(id, path) {
-		conn.send("subscribe", {Id: id});
 		var doc = new Doc({Id: id, Path: path, Rev: -1, Status: "subscribe"});
 		docs.add(doc);
+		conn.send("subscribe", {Id: id});
 		return doc;
 	},
 };

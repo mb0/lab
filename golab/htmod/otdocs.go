@@ -11,6 +11,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/mb0/diff"
 	"github.com/mb0/lab/hub"
 	"github.com/mb0/lab/ot"
 	"github.com/mb0/lab/ws"
@@ -93,24 +94,58 @@ func (mod *htmod) Handle(op ws.Op, r *ws.Res) {
 		fmt.Println(err)
 		return
 	}
-	// TODO diff data and broadcast ops
-	_ = data
-	log.Println("file changed ot doc must be updated.")
+	// diff data and broadcast ops
+	rev := doc.Rev()
+	change := diff.Bytes(([]byte)(*doc.Doc), data)
+	ops := make(ot.Ops, 0, len(change))
+	var ret, del, ins int
+	for _, c := range change {
+		if r := c.A - ret; r > 0 {
+			ops = append(ops, ot.Op{N: r})
+			ret = c.A
+		}
+		if c.Del > 0 {
+			ops = append(ops, ot.Op{N: -c.Del})
+			del += c.Del
+		}
+		if c.Ins > 0 {
+			ops = append(ops, ot.Op{S: string(data[c.B : c.B+c.Ins])})
+			ins += c.Ins
+		}
+	}
+	if r := len(data) - ret - ins; r > 0 {
+		ops = append(ops, ot.Op{N: r})
+	}
+	if del > 0 || ins > 0 {
+		ops = ot.Merge(ops)
+		mod.handlerev("revise", apiRev{Id: r.Id, Rev: rev, Ops: ops}, doc)
+	}
 }
 
 func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 	var rev apiRev
-	to := from
 	err := m.Unmarshal(&rev)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	rev.User = from
 	mod.docs.Lock()
 	defer mod.docs.Unlock()
 	doc, found := mod.docs.all[rev.Id]
-	if !found {
-		if m.Head != "subscribe" {
+	if found {
+		doc.Lock()
+		defer doc.Unlock()
+	}
+	mod.handlerev(m.Head, rev, doc)
+}
+
+func (mod *htmod) handlerev(head string, rev apiRev, doc *otdoc) {
+	var m hub.Msg
+	var err error
+	to := rev.User
+	if doc == nil {
+		if head != "subscribe" {
 			log.Println("doc not found")
 			return
 		}
@@ -130,24 +165,24 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 			return
 		}
 		doc = &otdoc{Id: rev.Id, Path: path, Server: &ot.Server{}}
+		doc.Lock()
+		defer doc.Unlock()
 		doc.Doc = (*ot.Doc)(&data)
 		mod.docs.all[doc.Id] = doc
 		mod.Hub.Add <- doc
 	}
-	doc.Lock()
-	defer doc.Unlock()
-	switch m.Head {
+	switch head {
 	case "subscribe":
-		doc.group = append(doc.group, from)
+		doc.group = append(doc.group, rev.User)
 		m, err = hub.Marshal("subscribe", apiRev{
 			Id:   rev.Id,
 			Rev:  doc.Rev(),
 			Ops:  ot.Ops{ot.Op{S: string(*doc.Doc)}},
-			User: from,
+			User: rev.User,
 		})
 	case "unsubscribe":
 		for i, cid := range doc.group {
-			if cid != from {
+			if cid != rev.User {
 				continue
 			}
 			doc.group = append(doc.group[:i], doc.group[i+1:]...)
@@ -170,7 +205,7 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 			Id:   rev.Id,
 			Rev:  doc.Rev(),
 			Ops:  ops,
-			User: from,
+			User: rev.User,
 		})
 	case "publish":
 		// write to file
@@ -197,7 +232,7 @@ func (mod *htmod) docroute(m hub.Msg, from hub.Id) {
 		m, err = hub.Marshal("publish", apiRev{
 			Id:   rev.Id,
 			Rev:  doc.Rev(),
-			User: from,
+			User: rev.User,
 		})
 	}
 	if err != nil {

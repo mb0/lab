@@ -71,3 +71,15 @@ func line(buf []byte) ([]byte, []byte) {
 	}
 	return nil, buf
 }
+
+type byDir []*Report
+
+func (l byDir) Len() int {
+	return len(l)
+}
+func (l byDir) Less(i, j int) bool {
+	return l[i].Dir < l[j].Dir
+}
+func (l byDir) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}

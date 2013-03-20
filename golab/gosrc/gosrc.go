@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"go/build"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -89,6 +90,7 @@ func (s *Src) AllReports() []*Report {
 			reps = append(reps, NewReport(pkg))
 		}
 	}
+	sort.Sort(byDir(reps))
 	return reps
 }
 

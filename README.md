@@ -33,8 +33,11 @@ Features:
  * Report view for go errors and test failures with links to sources.
  * Ace editor with gentle highlights and error markers go, js, css.
  * Document collaboration with operational transformation.
+ * External filesystem changes to open documents are merged.
  * godoc integration, Ctrl+Alt+Click on go import paths.
  * Unity web launcher integration.
+
+I recommend using the Chrome browser, because the visual feedback seems faster than other browsers.
 
 Feedback
 --------

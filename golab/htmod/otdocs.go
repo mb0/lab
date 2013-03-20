@@ -100,9 +100,9 @@ func (mod *htmod) Handle(op ws.Op, r *ws.Res) {
 	ops := make(ot.Ops, 0, len(change))
 	var ret, del, ins int
 	for _, c := range change {
-		if r := c.A - ret; r > 0 {
+		if r := c.A - ret - del; r > 0 {
 			ops = append(ops, ot.Op{N: r})
-			ret = c.A
+			ret = c.A - del
 		}
 		if c.Del > 0 {
 			ops = append(ops, ot.Op{N: -c.Del})

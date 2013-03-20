@@ -80,6 +80,9 @@ func (w *ctrl) add(fsop Op, p *Res, name string) error {
 		return nil
 	}
 	r, err := newChild(p, name, false, true)
+	if err != nil {
+		return err
+	}
 	p.Children = insert(p.Children, r)
 	w.all[r.Id] = r
 	switch {

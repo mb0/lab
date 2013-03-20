@@ -17,7 +17,7 @@ func (doc *Doc) Apply(ops Ops) error {
 	i, buf := 0, *doc
 	ret, del, ins := ops.Count()
 	if ret+del != len(buf) {
-		return fmt.Errorf("The base length must be equal to the document length")
+		return fmt.Errorf("The base length must be equal to the document length %d != %d", ret+del, len(buf))
 	}
 	if max := ret + del + ins; max > cap(buf) {
 		nbuf := make([]byte, len(buf), max+(max>>2))

@@ -5,18 +5,40 @@ license that can be found in the LICENSE file.
 */
 define(["view/sot", "ace/range"], function(sot, acerange) {
 
+function utf8OffsetToPos(doc, off, startrow) {
+	var line, lines = doc.$lines || doc.getAllLines();
+	if (!startrow) startrow = 0;
+	var i, j, c, lastRow = lines.length;
+	for (i=startrow; i<lastRow; i++) {
+		line = lines[i];
+		for (j=0; off>0 && j<line.length; j++) {
+			c = line.charCodeAt(j);
+			if (c > 0x10000) off -= 4;
+			else if (c > 0x800) off -= 3;
+			else if (c > 0x80) off -= 2;
+			else off -= 1;
+		}
+		if (--off < 0 || i == lastRow-1)
+			return {row: i, column: j};
+	}
+	return {row: i-1, column: j};
+}
+
 function posToRestIndex(doc, pos) { // returns {start, end, last}
 	var lines = doc.$lines || doc.getAllLines();
 	var start = 0, last = 0;
-	var i = 0, lastRow = lines.length;
+	var i, c, lastRow = lines.length;
 	var startRow = Math.min(pos.row, lastRow);
-	for (;i < lastRow; i++) {
-		last += lines[i].length;
+	for (i=0; i<lastRow; i++) {
+		c = sot.utf8len(lines[i])
+		last += c;
 		if (i < startRow) {
-			start += lines[i].length;
+			start += c;
+		} else if (i == startRow) {
+			start += sot.utf8len(lines[i].slice(0, pos.column))
 		}
 	}
-	return {start:start + pos.column + startRow, last:last+i-1};
+	return {start:start+startRow, last:last+i-1};
 }
 function joinLines(lines) {
 	var res = "";
@@ -30,19 +52,22 @@ function deltaToOps(doc, delta) { // returns ops
 	var ops = [];
 	switch (delta.action) {
 	case "removeText":
-		ops.push(-delta.text.length);
+		ops.push(-sot.utf8len(delta.text));
 		break;
 	case "removeLines":
-		ops.push(-joinLines(delta.lines).length);
+		var i, n = 0;
+		for (i=0; i<delta.lines.length; i++)
+			n -= sot.utf8len(delta.lines[i]);
+		ops.push(n-i);
 		break;
 	case "insertText":
 		ops.push(delta.text);
-		idxr.last -= delta.text.length;
+		idxr.last -= sot.utf8len(delta.text);
 		break;
 	case "insertLines":
-		var lines = joinLines(delta.lines);
-		ops.push(lines);
-		idxr.last -= lines.length;
+		var text = joinLines(delta.lines);
+		ops.push(text);
+		idxr.last -= sot.utf8len(text);
 		break;
 	default:
 		return [];
@@ -55,24 +80,26 @@ function deltaToOps(doc, delta) { // returns ops
 }
 function applyOps(doc, ops) { // returns error
 	var count = sot.count(ops);
-	var lines = doc.getLength();
-	var last = doc.positionToIndex({row: lines-1, column: doc.getLine(lines-1).length});
-	if (count[0]+count[1] != last) {
+	var index = 0, pos = {row: 0, column: 0}, op;
+	var idxr = posToRestIndex(doc, pos)
+	if (count[0]+count[1] != idxr.last) {
 		return "The base length must be equal to the document length";
 	}
-	var index = 0, pos, op;
 	doc.sotdoc.merge = true;
 	for (var i=0; i < ops.length; i++) {
 		if (!(op = ops[i])) continue;
 		if (typeof op == "string") {
-			pos = doc.indexToPosition(index);
+			pos = utf8OffsetToPos(doc, index);
+			console.log(op, index, pos);
 			doc.insert(pos, op)
-			index += op.length;
+			index += sot.utf8len(op);
 		} else if (op > 0) {
+			console.log(op, index);
 			index += op;
 		} else if (op < 0) {
-			pos = doc.indexToPosition(index);
-			var end = doc.indexToPosition(index-op);
+			pos = utf8OffsetToPos(doc, index);
+			var end = utf8OffsetToPos(doc, index-op);
+			console.log(op, index, pos, end);
 			doc.remove(new acerange.Range(pos.row, pos.column, end.row, end.column));
 		}
 	}

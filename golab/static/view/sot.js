@@ -10,15 +10,28 @@ define(function() {
 
 // Op represents a single operation.
 // If op is number N it signifies:
-// N > 0: Retain op chars
-// N < 0: Delete -op chars
+// N > 0: Retain op bytes
+// N < 0: Delete -op bytes
 // B == 0: Noop
-// If op is string S of length N:
+// If op is string S of utf8len N:
 // N > 0: Insert string S
 // N == 0: Noop
 
 // Ops is a sequence of operations:
 // [5, -2, "text"] // retain 5, delete 2, insert "text"
+
+// javascript characters use UCS-2 encoding. we need utf-8 byte counts
+function utf8len(str) {
+	var i, c, n = 0;
+	for (i=0; i<str.length; i++) {
+		c = str.charCodeAt(i);
+		if (c > 0x10000) n += 4;
+		else if (c > 0x800) n += 3;
+		else if (c > 0x80) n += 2;
+		else n += 1;
+	}
+	return n;
+}
 
 // Count returns the number of retained, deleted and inserted bytes.
 function count(ops) { // returns [ret, del, ins]
@@ -26,7 +39,7 @@ function count(ops) { // returns [ret, del, ins]
 	for (var i=0; i < ops.length; i++) {
 		var op = ops[i];
 		if (typeof op == "string") {
-			ins += op.length;
+			ins += utf8len(op);
 		} else if (op < 0) {
 			del += -op;
 		} else if (op > 0) {
@@ -103,25 +116,25 @@ function compose(a, b) { // returns [ab, err]
 				ob = b[ib++];
 			}
 		} else if (ta == "string" && ob < 0) { // insert delete
-			od = oa.length + ob;
+			od = utf8len(oa) + ob;
 			if (od > 0) {
 				oa = oa.substr(1-ob);
 				ob = b[ib++];
 			} else if (od < 0) {
-				ob += oa.length;
+				ob = od;
 				oa = a[ia++];
 			} else {
 				oa = a[ia++];
 				ob = b[ib++];
 			}
 		} else if (ta == "string" && ob > 0) { // insert retain
-			od = oa.length - ob;
+			od = utf8len(oa) - ob;
 			if (od > 0) {
 				res.push(oa.substr(0, ob));
 				oa = oa.substr(ob+1);
 				ob = b[ib++];
 			} else if (od < 0) {
-				ob -= oa.length;
+				ob = -od;
 				res.push(oa);
 				oa = a[ia++];
 			} else {
@@ -168,13 +181,13 @@ function transform(a, b) { // returns [a1, b1, err]
 		var ta = typeof oa;
 		if (ta == "string") { // insert a
 			a1.push(oa);
-			b1.push(oa.length);
+			b1.push(utf8len(oa));
 			oa = a[ia++];
 			continue;
 		}
 		var tb = typeof ob;
 		if (tb == "string") { // insert b
-			a1.push(ob.length);
+			a1.push(utf8len(ob));
 			b1.push(ob);
 			ob = b[ib++];
 			continue;
@@ -252,6 +265,7 @@ function transform(a, b) { // returns [a1, b1, err]
 }
 
 return {
+	utf8len: utf8len,
 	count: count,
 	merge: merge,
 	compose: compose,

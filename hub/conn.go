@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"github.com/garyburd/go-websocket/websocket"
 	"hash/fnv"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -42,7 +43,9 @@ func (c *conn) read(h *Hub) {
 		c.wconn.SetReadDeadline(time.Now().Add(readWait))
 		op, r, err := c.wconn.NextReader()
 		if err != nil {
-			log.Println("error receiving message", err)
+			if err != io.ErrUnexpectedEOF {
+				log.Println("error receiving message", err)
+			}
 			return
 		}
 		if op == websocket.OpBinary {

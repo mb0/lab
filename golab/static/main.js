@@ -18,7 +18,8 @@ require.config({
 	}
 });
 
-define(["conn", "app", "view/report", "view/file", "view/godoc", "unity"], function(conn, app, report, file, godoc) {
+define(["conn", "app", "view/report", "view/docs", "view/file", "view/godoc", "unity"],
+function(conn, app, report, docs, file, godoc) {
 
 $('<link>').attr({
 	type: "image/png",
@@ -34,7 +35,7 @@ $('<link>').attr({
 
 $(document).on("click", "a", function(e) {
 	var href = $(e.currentTarget).attr("href");
-	if (href && href.indexOf("http") != 0) {
+	if (href && href.indexOf("http") !== 0) {
 		e.preventDefault();
 		Backbone.history.navigate(href, {trigger: true});
 	}
@@ -64,6 +65,7 @@ new app.Router({
 			'</pre>'
 		].join('\n'))},
 		{id: "index", uri: "", name:'<i class="icon-circle" title="report"/></i>', view: report.view},
+		{id: "docs", uri: "docs", name:'<i class="icon-inbox" title="documents"/></i>', view: docs.view},
 	])
 });
 
@@ -75,6 +77,7 @@ var ConnView = Backbone.View.extend({
 	initialize: function() {
 		this.listenTo(conn, "open close", this.render);
 		this.render();
+		conn.connect();
 	},
 	render: function() {
 		this.$el.html(!conn.connected() ? '<a class="offline"><i class="icon-signin" title="reconnect"/></i></a>' : '');
@@ -86,8 +89,6 @@ var ConnView = Backbone.View.extend({
 	}
 });
 
-$("#app > nav > ul").prepend(new ConnView({}).render().el)
-
-conn.connect();
+$("#app > nav > ul").prepend(new ConnView().el);
 
 });

@@ -3,8 +3,8 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base", "conn", "view/editor", "view/report", "view/sotdoc", "ace/document"],
-function(base, conn, createEditor, report, sotdoc, acedoc) {
+define(["base", "conn", "view/editor", "view/report", "view/docs"],
+function(base, conn, createEditor, report, docs) {
 
 function pathcrumbs(path) {
 	if (!path) return [];
@@ -73,8 +73,7 @@ var FileView = Backbone.View.extend({
 	},
 	onstat: function(data) {
 		var view = this;
-		var path = this.model.get("Path")
-		if (data.Path != path) {
+		if (data.Path != this.model.get("Path")) {
 			return;
 		}
 		this.model.set(data);
@@ -85,51 +84,23 @@ var FileView = Backbone.View.extend({
 			this.content.children().remove();
 			this.content.append(this.listview.$el);
 		} else {
-			this.listenTo(conn, "msg:subscribe", this.onsub);
-			this.listenTo(conn, "msg:publish", this.onpub);
-			this.listenTo(conn, "msg:revise", this.onrev);
-			conn.send("subscribe", {Id: data.Id});
+			this.doc = docs.subscribe(data.Id, data.Path);
+			this.listenTo(this.doc, "change:Ace", this.onChangeAce);
 		}
 	},
-	onsub: function(data) {
-		if (data.Id != this.model.get("Id")) return;
-		var text = data.Ops && data.Ops[0] || "";
-		this.doc = new acedoc.Document(text);
-		this.doc.user = data.User;
-		var sdoc = sotdoc.install(data.Id, data.Rev, this.doc);
-		var path = this.model.get("Path");
-		this.editor = createEditor(this.content[0], path, this.doc);
-		this.doc.on("sotops", function(e) {
-			conn.send("revise", e.data);
-		});
+	onChangeAce: function(doc, acedoc) {
+		if (!acedoc) return;
+		this.editor = createEditor(this.content[0], doc.get("Path"), acedoc);
 		this.editor.commands.addCommands([{
-			name:"save",
-			bindKey: {win: "Ctrl-S", mac:"Command-S"},
-			exec: function(editor, line) {
-				console.log("publish", path);
-				conn.send("publish", {Id: sdoc.id});
-			},
+			name:     "save",
+			bindKey:  {win: "Ctrl-S", mac:"Command-S"},
+			exec:     _.bind(doc.publish, doc),
 			readOnly: false
 		}]);
-		if (this.line > 0) {
-			this.setLine(this.line);
-		}
-	},
-	onpub: function(data) {
-		if (this.doc && data.Id != this.doc.sotdoc.id) return;
-		console.log("saved", this.model.get("Path"));
-	},
-	onrev: function(data) {
-		if (this.doc && data.Id != this.doc.sotdoc.id) return;
-		var err = null;
-		if (this.doc.user && this.doc.user == data.User) {
-			err = sotdoc.ackOps(this.doc, data.Ops);
-		} else {
-			err = sotdoc.recvOps(this.doc, data.Ops);
-		}
+		if (this.line > 0) this.setLine(this.line);
 	},
 	setLine: function(l) {
-		if (this.editor != null) {
+		if (this.editor !== null) {
 			this.editor.moveCursorToPosition({row:l-1, column:0});
 			var row = l-(this.editor.$getVisibleRowCount()*0.5);
 			this.editor.scrollToRow(Math.max(row,0));

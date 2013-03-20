@@ -80,7 +80,7 @@ function compose(a, b) { // returns [ab, err]
 	if (acount[0]+acount[2] != bcount[0]+bcount[1]) {
 		return [null, "Compose requires consecutive ops."];
 	}
-	var res = [], err;
+	var res = [], err = null;
 	var ia = 0, ib = 0;
 	var oa = a[ia++], ob = b[ib++];
 	while (!!oa || !!ob) {
@@ -174,7 +174,7 @@ function transform(a, b) { // returns [a1, b1, err]
 	if (acount[0]+acount[1] != bcount[0]+bcount[1]) {
 		return [null, null, "Transform requires concurrent ops."];
 	}
-	var a1 = [], b1 = [], err;
+	var a1 = [], b1 = [], err = null;
 	var ia = 0, ib = 0;
 	var oa = a[ia++], ob = b[ib++];
 	while (!!oa || !!ob) {

@@ -119,6 +119,12 @@ pre { padding-left: 15px;}
 	margin: 0 0 0 65px;
 	padding-left: 10px;
 }
+.docs {
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	margin: 0 0 0 50px;
+}
 .file {
 	position: absolute;
 	top:0; left:0; right:0; bottom: 0;

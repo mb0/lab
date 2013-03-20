@@ -30,12 +30,12 @@ function posToRestIndex(doc, pos) { // returns {start, end, last}
 	var i, c, lastRow = lines.length;
 	var startRow = Math.min(pos.row, lastRow);
 	for (i=0; i<lastRow; i++) {
-		c = sot.utf8len(lines[i])
+		c = sot.utf8len(lines[i]);
 		last += c;
 		if (i < startRow) {
 			start += c;
 		} else if (i == startRow) {
-			start += sot.utf8len(lines[i].slice(0, pos.column))
+			start += sot.utf8len(lines[i].slice(0, pos.column));
 		}
 	}
 	return {start:start+startRow, last:last+i-1};
@@ -81,7 +81,7 @@ function deltaToOps(doc, delta) { // returns ops
 function applyOps(doc, ops) { // returns error
 	var count = sot.count(ops);
 	var index = 0, pos = {row: 0, column: 0}, op;
-	var idxr = posToRestIndex(doc, pos)
+	var idxr = posToRestIndex(doc, pos);
 	if (count[0]+count[1] != idxr.last) {
 		return "The base length must be equal to the document length";
 	}
@@ -91,7 +91,7 @@ function applyOps(doc, ops) { // returns error
 		if (typeof op == "string") {
 			pos = utf8OffsetToPos(doc, index);
 			console.log(op, index, pos);
-			doc.insert(pos, op)
+			doc.insert(pos, op);
 			index += sot.utf8len(op);
 		} else if (op > 0) {
 			console.log(op, index);
@@ -110,16 +110,16 @@ function applyOps(doc, ops) { // returns error
 
 function recvOps(doc, ops) { // returns error
 	var sdoc = doc.sotdoc, res;
-	if (sdoc.wait != null) {
+	if (sdoc.wait !== null) {
 		res = sot.transform(ops, sdoc.wait);
-		if (res[2] != null) {
+		if (res[2] !== null) {
 			return res[2];
 		}
 		ops = res[0], sdoc.wait = res[1];
 	}
-	if (sdoc.buf != null) {
+	if (sdoc.buf !== null) {
 		res = sot.transform(ops, sdoc.buf);
-		if (res[2] != null) {
+		if (res[2] !== null) {
 			return res[2];
 		}
 		ops = res[0], sdoc.buf = res[1];
@@ -136,11 +136,11 @@ function emitOps(doc, ops) {
 }
 
 function ackOps(doc, ops) { // returns error
-	if (doc.sotdoc.buf != null) {
+	if (doc.sotdoc.buf !== null) {
 		doc.sotdoc.rev++;
 		emitOps(doc, doc.sotdoc.buf);
 		doc.sotdoc.buf = null;
-	} else if (doc.sotdoc.wait != null) {
+	} else if (doc.sotdoc.wait !== null) {
 		doc.sotdoc.rev++;
 		doc.sotdoc.wait = null;
 	} else {
@@ -163,20 +163,20 @@ function install(id, rev, doc) {
 		}
 		var ops = deltaToOps(doc, e.data);
 		if (!ops) return;
-		if (sdoc.buf != null) {
+		if (sdoc.buf !== null) {
 			var res = sot.compose(sdoc.buf, ops);
-			if (res[1] != null) {
+			if (res[1] !== null) {
 				console.log("compose error", res);
 			}
 			sdoc.buf = res[0];
-		} else if (sdoc.wait != null) {
+		} else if (sdoc.wait !== null) {
 			sdoc.buf = ops;
 		} else {
 			emitOps(doc, ops);
 		}
 	});
 	return sdoc;
-};
+}
 
 return {
 	install: install,

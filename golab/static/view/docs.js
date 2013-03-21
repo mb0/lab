@@ -25,6 +25,15 @@ var Doc = sotdoc.Doc.extend({
 	},
 	publish: function() {
 		conn.send("publish", {Id: this.get("Id")});
+	},
+	format: function() {
+		conn.send("format", {Id: this.get("Id")});
+	},
+	complete: function(cursor) {
+		var acedoc = this.get("Ace");
+		var lines = acedoc.$lines || acedoc.getAllLines();
+		var idxr = sotdoc.posToRestIndex(lines, cursor);
+		conn.send("complete", {Id: this.get("Id"), Offs: idxr.start});
 	}
 });
 

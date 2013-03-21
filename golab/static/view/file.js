@@ -84,19 +84,35 @@ var FileView = Backbone.View.extend({
 			this.content.children().remove();
 			this.content.append(this.listview.$el);
 		} else {
+			var id = data.Id;
 			this.doc = docs.subscribe(data.Id, data.Path);
 			this.listenTo(this.doc, "change:Ace", this.onChangeAce);
+			this.listenTo(conn, "msg:complete", function(data) {
+				if (data.Id == id) console.log("complete", data);
+			});
 		}
 	},
 	onChangeAce: function(doc, acedoc) {
 		if (!acedoc) return;
 		this.editor = createEditor(this.content[0], doc.get("Path"), acedoc);
-		this.editor.commands.addCommands([{
-			name:     "save",
-			bindKey:  {win: "Ctrl-S", mac:"Command-S"},
-			exec:     _.bind(doc.publish, doc),
-			readOnly: false
-		}]);
+		var commands = [{
+			name: "save", readOnly: false,
+			exec: _.bind(doc.publish, doc),
+			bindKey: {win: "Ctrl-S", mac:"Command-S"},
+		}];
+		commands.push({
+			name: "complete", readOnly: false,
+			exec: function(editor){
+				doc.complete(editor.selection.getCursor());
+			},
+			bindKey: {win: "Ctrl-Space", mac:"Command-Space"},
+		});
+		commands.push({
+			name: "format", readOnly: false,
+			exec: _.bind(doc.format, doc),
+			bindKey: {win: "Ctrl-Shift-F", mac:"Command-Shift-F"},
+		});
+		this.editor.commands.addCommands(commands);
 		if (this.line > 0) this.setLine(this.line);
 	},
 	setLine: function(l) {

@@ -38,6 +38,37 @@ func (doc *otdoc) Group() []hub.Id {
 	return group
 }
 
+// diffops diffs data and returns ops
+func (doc *otdoc) diffops(data []byte) ot.Ops {
+	change := diff.Bytes(([]byte)(*doc.Doc), data)
+	if len(change) == 0 {
+		return nil
+	}
+	ops := make(ot.Ops, 0, len(change)*2)
+	var ret, del, ins int
+	for _, c := range change {
+		if r := c.A - ret - del; r > 0 {
+			ops = append(ops, ot.Op{N: r})
+			ret = c.A - del
+		}
+		if c.Del > 0 {
+			ops = append(ops, ot.Op{N: -c.Del})
+			del += c.Del
+		}
+		if c.Ins > 0 {
+			ops = append(ops, ot.Op{S: string(data[c.B : c.B+c.Ins])})
+			ins += c.Ins
+		}
+	}
+	if r := len(data) - ret - ins; r > 0 {
+		ops = append(ops, ot.Op{N: r})
+	}
+	if del > 0 || ins > 0 {
+		return ot.Merge(ops)
+	}
+	return nil
+}
+
 type docs struct {
 	sync.RWMutex
 	all map[ws.Id]*otdoc
@@ -94,30 +125,9 @@ func (mod *htmod) Handle(op ws.Op, r *ws.Res) {
 		fmt.Println(err)
 		return
 	}
-	// diff data and broadcast ops
 	rev := doc.Rev()
-	change := diff.Bytes(([]byte)(*doc.Doc), data)
-	ops := make(ot.Ops, 0, len(change))
-	var ret, del, ins int
-	for _, c := range change {
-		if r := c.A - ret - del; r > 0 {
-			ops = append(ops, ot.Op{N: r})
-			ret = c.A - del
-		}
-		if c.Del > 0 {
-			ops = append(ops, ot.Op{N: -c.Del})
-			del += c.Del
-		}
-		if c.Ins > 0 {
-			ops = append(ops, ot.Op{S: string(data[c.B : c.B+c.Ins])})
-			ins += c.Ins
-		}
-	}
-	if r := len(data) - ret - ins; r > 0 {
-		ops = append(ops, ot.Op{N: r})
-	}
-	if del > 0 || ins > 0 {
-		ops = ot.Merge(ops)
+	ops := doc.diffops(data)
+	if ops != nil {
 		mod.handlerev("revise", apiRev{Id: r.Id, Rev: rev, Ops: ops}, doc)
 	}
 }
@@ -239,5 +249,7 @@ func (mod *htmod) handlerev(head string, rev apiRev, doc *otdoc) {
 		log.Println(err)
 		return
 	}
-	mod.SendMsg(m, to)
+	if to != 0 {
+		mod.SendMsg(m, to)
+	}
 }

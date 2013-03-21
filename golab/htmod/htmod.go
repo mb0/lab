@@ -76,6 +76,9 @@ func (mod *htmod) route(m hub.Msg, id hub.Id) {
 	case "subscribe", "unsubscribe", "revise", "publish":
 		mod.docroute(m, id)
 		return
+	case "complete", "format":
+		mod.actionRoute(m, id)
+		return
 	default:
 		msg, err = hub.Marshal("unknown", m.Head)
 	}

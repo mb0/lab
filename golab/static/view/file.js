@@ -3,8 +3,8 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base", "conn", "view/editor", "view/report", "view/docs"],
-function(base, conn, createEditor, report, docs) {
+define(["base", "conn", "view/editor", "view/report", "view/docs", "ace/autocomplete"],
+function(base, conn, createEditor, report, docs, autocomplete) {
 
 function pathcrumbs(path) {
 	if (!path) return [];
@@ -88,7 +88,16 @@ var FileView = Backbone.View.extend({
 			this.doc = docs.subscribe(data.Id, data.Path);
 			this.listenTo(this.doc, "change:Ace", this.onChangeAce);
 			this.listenTo(conn, "msg:complete", function(data) {
-				if (data.Id == id) console.log("complete", data);
+				if (data.Id == id) {
+					var ac = new autocomplete.Autocomplete();
+					var props = _.map(data.Proposed[1], function(e) {
+						return e.name;
+					});
+					if (props.length) {
+						ac.complete(this.editor, props);
+						ac.activated = true;
+					}
+				}
 			});
 		}
 	},

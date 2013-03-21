@@ -188,6 +188,7 @@ var Doc = Backbone.Model.extend({
 
 return {
 	Doc: Doc,
+	posToRestIndex: posToRestIndex,
 };
 });
 

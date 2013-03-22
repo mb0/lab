@@ -3,134 +3,53 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base", "conn", "view/editor", "view/report", "view/docs", "lib/completion", "lib/paths"],
-function(base, conn, createEditor, report, docs, completion, paths) {
+define(["conn", "view/folder", "view/editor", "view/report", "lib/paths"],
+function(conn, folder, editor, report, paths) {
 
-var File = Backbone.Model.extend({
-	idAttribute: "Id",
-	getpath: function() {
-		var path = this.get("parent").get("Path");
-		if (path && path[path.length-1] != "/") {
-			path += "/";
-		}
-		return path + this.get("Name");
-	},
-	crumbs: function() {
-		return _.map(paths.crumbs(this.get("Path")), function(c) {
-			return '<a href="#file/'+ c[0] +'">/'+c[1]+"</a>";
-		}).join("");
-	},
-	icon: function(open) {
-		if (!this.get("IsDir")) {
-			return 'icon-file';
-		} else if (open) {
-			return 'icon-folder-open-alt';
-		}
-		return 'icon-folder-close-alt';
-	}
-});
-
-var Files = Backbone.Collection.extend({model:File});
-
-var FileListItem = base.ListItemView.extend({
-	template: _.template('<a href="#file<%- getpath() %>"><i class="<%- icon() %>"></i> <%- get("Name") %></a>'),
-});
-
-var FileList = base.ListView.extend({
-	itemView: FileListItem,
-});
 var FileView = Backbone.View.extend({
 	tagName: "section",
 	className: "file",
-	template: _.template('<header><i class="<%- icon(true) %>"></i> <%= crumbs() %></header><%= get("Error") || "" %>'),
 	initialize: function(opts) {
-		this.model = new File({Path:opts.Path});
-		this.content = $('<div class="content">');
-		this.editor = null;
-		this.doc = null;
-		this.line = 0;
-		this.children = new Files();
-		this.listview = new FileList({collection:this.children});
+		this.path = opts.path;
+		this.line = opts.line;
+		this.uri = "file"+this.path;
+		this.name = paths.shorten(this.path, 2);
+		this.view = this;
+		this.active = true;
+		this.closable = true;
+		this.content = null;
 		this.listenTo(conn, "msg:stat msg:stat.err", this.onstat);
-		this.listenTo(this.model, "change", this.render);
-		this.listenTo(this.model, "remove", this.remove);
-		conn.send("stat", opts.Path);
+		conn.send("stat", this.path);
 	},
 	render: function() {
-		this.$el.html(this.template(this.model));
-		this.$el.append(this.content);
 		return this;
 	},
 	onstat: function(data) {
-		var view = this;
-		if (data.Path != this.model.get("Path")) {
-			return;
-		}
-		this.model.set(data);
-		if (data.Error) return;
-		if (data.IsDir || data.Children) {
-			_.each(data.Children, function(c){c.parent = view.model;});
-			this.children.reset(data.Children);
-			this.content.children().remove();
-			this.content.append(this.listview.$el);
+		if (data.Path != this.path) return;
+		if (data.Error)  {
+			alert(data.Error);
+		} else if (data.IsDir || data.Children) {
+			this.content = new folder.View({el: this.el, model: data});
 		} else {
-			var id = data.Id;
-			this.doc = docs.subscribe(data.Id, data.Path);
-			this.listenTo(this.doc, "change:Ace", this.onChangeAce);
-			this.listenTo(conn, "msg:complete", function(data) {
-				if (data.Id != id) return;
-				completion.show(this.editor, data);
-			});
+			this.content = new editor.View({el: this.el, model: data});
+			if (this.line > 0) {
+				this.content.setLine(this.line);
+			}
 		}
 	},
-	onChangeAce: function(doc, acedoc) {
-		if (!acedoc) return;
-		var path = doc.get("Path");
-		this.editor = createEditor(this.content[0], path, acedoc);
-		var commands = [{
-			name: "save", readOnly: false,
-			exec: _.bind(doc.publish, doc),
-			bindKey: {win: "Ctrl-S", mac:"Command-S"},
-		}];
-		if (path.match(/\.go$/)) {
-			commands.push({
-				name: "complete", readOnly: false,
-				exec: function(editor) {
-					// TODO: merge last request if possible
-					doc.complete(editor.selection.getCursor());
-				},
-				bindKey: {win: "Ctrl-Space", mac:"Command-Space"},
-			});
-			commands.push({
-				name: "format", readOnly: false,
-				exec: function() {
-					doc.format(doc);
-				},
-				bindKey: {win: "Ctrl-Shift-F", mac:"Command-Shift-F"},
-			});
-		}
-		this.editor.commands.addCommands(commands);
-		if (this.line > 0) this.setLine(this.line);
+	isEditor: function() {
+		return this.content && this.content.$el && this.content.$el.hasClass("editor");
 	},
-	setLine: function(l) {
-		if (this.editor !== null) {
-			this.editor.moveCursorToPosition({row:l-1, column:0});
-			var row = l-(this.editor.$getVisibleRowCount()*0.5);
-			this.editor.scrollToRow(Math.max(row,0));
-		} else {
-			this.line = l;
-		}
-	}
 });
 
-var ViewManager = Backbone.View.extend({
+var FileRouter = Backbone.View.extend({
 	initialize: function(opts) {
 		this.map = {}; // path: {view, annotations},
 		this.listenTo(report.view.reports, "add change reset", this.checkreports);
 		this.route = "file/*path";
 		this.name = "openfile";
 	},
-	checkreports: function() {
+	checkReports: function() {
 		var reports = report.view.reports;
 		// check for markers and add to map
 		var re = /^((\/(?:[^\/\s]+\/)+)?(\S+?\.go))\:(\d+)\:(?:(\d+)\:)?(.*)$/;
@@ -165,55 +84,32 @@ var ViewManager = Backbone.View.extend({
 				update[path] = entry;
 			}
 		}, this);
-		_.delay(this.updateannotations, 200, update);
+		_.delay(this.updateAnnotations, 200, update);
 	},
-	updateannotations: function(work) {
+	updateAnnotations: function(work) {
 		_.each(work, function(e) {
-			if (!e.view || !e.view.editor) return;
-			e.view.editor.getSession().setAnnotations(e.markers);
+			if (!e.view || !e.view.isEditor()) return;
+			var editor = e.view.content.editor;
+			if (editor) editor.session.setAnnotations(e.markers);
 		});
 	},
 	callback: function(path) {
-		var pl = this.splitline(path);
-		path = pl[0];
+		var pl = paths.splitHashLine("/"+path);
+		path = pl.path;
 		var entry = this.map[path] || {view: null, markers: []};
 		if (!entry.view) {
-			entry.view = new FileView({id: _.uniqueId("file"), Path: path});
+			pl.id = _.uniqueId("file");
+			entry.view = new FileView(pl);
 			this.map[path] = entry;
+		} else if (pl.line > 0 && entry.view.isEditor()) {
+			entry.view.content.setLine(pl.line);
 		}
-		if (pl[1] > 0) entry.view.setLine(pl[1]);
-		return this.newtile(path, entry.view);
+		return entry.view;
 	},
-	newtile: function(path, view) {
-		return {
-			id: view.id,
-			uri: "file"+path,
-			name: this.tilename(path),
-			view: view,
-			active: true,
-			closable: true,
-		};
-	},
-	tilename: function(path) {
-		return _.map(_.last(paths.crumbs(path),2), function(p) {
-			return p[1];
-		}).join("/") || path;
-	},
-	splitline: function(path) {
-		var line = 0;
-		var pathline = path.split("#L");
-		if (pathline.length > 1 && pathline[1].match(/^\d+$/)) {
-			path = pathline[0], line = parseInt(pathline[1], 10);
-		}
-		if (path && path[path.length-1] == "/") {
-			path = path.slice(0, path.length-1);
-		}
-		return ["/"+path, line];
-	}
 });
 
 return {
-	View: FileView,
-	router: new ViewManager(),
+	router: new FileRouter(),
 };
 });
+

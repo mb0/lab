@@ -3,48 +3,13 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["require", "ace/ace", "ace/editor", "ace/virtual_renderer", "ace/multi_select", "ace/lib/event"],
-function(require, ace) {
+define(["require", "view/modes", "ace/ace", "ace/editor", "ace/virtual_renderer", "ace/multi_select", "ace/lib/event"],
+function(require, modes, ace) {
 
 var	Editor = require("ace/editor").Editor,
 	Renderer = require("ace/virtual_renderer").VirtualRenderer,
 	MultiSelect = require("ace/multi_select").MultiSelect,
 	event = require("ace/lib/event");
-
-var modesByName = {
-	css: "css",
-	golang: "go",
-	html: "htm|html|xhtml",
-	javascript: "js",
-	json: "json",
-	markdown: "md|markdown",
-	text: "txt",
-	xml: "xml|rdf|rss|wsdl|xslt|atom|mathml|mml|xul|xbl"
-};
-
-function Mode(name, extensions) {
-	this.name = name;
-	this.mode = "ace/mode/" + name;
-	this.extRe = new RegExp("^.*\\.(" + extensions + ")$");
-}
-
-var modes = (function (modes){
-	for (var name in modesByName) {
-		var mode = new Mode(name, modesByName[name]);
-		modesByName[name] = mode;
-		modes.push(mode);
-	}
-	return modes;
-})([]);
-
-function getMode(path) {
-	for (var i = 0; i < modes.length; i++) {
-		if (path.match(modes[i].extRe)) {
-			return modes[i];
-		}
-	}
-	return modesByName.text;
-}
 
 function getLastToken(sess, r, i, type, ignore) {
 	for (var toks = null; i >= 0 || r > 0; i--) {
@@ -70,8 +35,8 @@ return function(c, name, value) {
 	renderer.setPrintMarginColumn(120);
 	renderer.setHScrollBarAlwaysVisible(false);
 	var sess = ace.createEditSession(value);
-	var mode = getMode(name);
-	sess.setMode(mode.mode);
+	var mode = modes.matchPath(name);
+	sess.setMode(mode.get("mode"));
 	sess.setUseSoftTabs(false);
 	sess.setTabSize(8);
 	var editor = new Editor(renderer);
@@ -91,7 +56,7 @@ return function(c, name, value) {
 	editor.on("destroy", function() {
 		event.removeListener(window, "resize", env.onResize);
 	});
-	if (mode.name == "golang") {
+	if (mode.id === "golang") {
 		editor.on("click", function(e) {
 			if (!e.getAccelKey() || !e.domEvent.altKey) return;
 			var pos = e.getDocumentPosition();

@@ -15,7 +15,27 @@ function pathscrumbs(path) {
 	});
 }
 
+function shorten(path, num) {
+	var crumbs = pathscrumbs(path);
+	return _.map(_.last(crumbs, num), function(p) {
+		return p[1];
+	}).join("/") || path;
+}
+
+function splitHashLine(path) {
+	var line = 0, pathline = path.split("#L");
+	if (pathline.length > 1 && pathline[1].match(/^\d+$/)) {
+		path = pathline[0], line = parseInt(pathline[1], 10);
+	}
+	if (path && path[path.length-1] == "/") {
+		path = path.slice(0, path.length-1);
+	}
+	return {path: path, line: line};
+}
+
 return {
 	crumbs: pathscrumbs,
+	shorten: shorten,
+	splitHashLine: splitHashLine,
 };
 });

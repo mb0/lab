@@ -184,7 +184,8 @@ pre { padding-left: 15px;}
 	text-align: right;
 }
 .ace_lab .ace_print-margin {
-	background: #232323;
+	right: 0;
+	background: rgba(0, 0, 0, 0.2);
 }
 .ace_lab .ace_scroller {
 	background-color: #282828;

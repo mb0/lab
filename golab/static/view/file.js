@@ -3,8 +3,8 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base", "conn", "view/editor", "view/report", "view/docs", "ace/autocomplete"],
-function(base, conn, createEditor, report, docs, autocomplete) {
+define(["base", "conn", "view/editor", "view/report", "view/docs", "lib/completion"],
+function(base, conn, createEditor, report, docs, completion) {
 
 function pathcrumbs(path) {
 	if (!path) return [];
@@ -88,39 +88,37 @@ var FileView = Backbone.View.extend({
 			this.doc = docs.subscribe(data.Id, data.Path);
 			this.listenTo(this.doc, "change:Ace", this.onChangeAce);
 			this.listenTo(conn, "msg:complete", function(data) {
-				if (data.Id == id) {
-					var ac = new autocomplete.Autocomplete();
-					var props = _.map(data.Proposed[1], function(e) {
-						return e.name;
-					});
-					if (props.length) {
-						ac.complete(this.editor, props);
-						ac.activated = true;
-					}
-				}
+				if (data.Id != id) return;
+				completion.show(this.editor, data);
 			});
 		}
 	},
 	onChangeAce: function(doc, acedoc) {
 		if (!acedoc) return;
-		this.editor = createEditor(this.content[0], doc.get("Path"), acedoc);
+		var path = doc.get("Path");
+		this.editor = createEditor(this.content[0], path, acedoc);
 		var commands = [{
 			name: "save", readOnly: false,
 			exec: _.bind(doc.publish, doc),
 			bindKey: {win: "Ctrl-S", mac:"Command-S"},
 		}];
-		commands.push({
-			name: "complete", readOnly: false,
-			exec: function(editor){
-				doc.complete(editor.selection.getCursor());
-			},
-			bindKey: {win: "Ctrl-Space", mac:"Command-Space"},
-		});
-		commands.push({
-			name: "format", readOnly: false,
-			exec: _.bind(doc.format, doc),
-			bindKey: {win: "Ctrl-Shift-F", mac:"Command-Shift-F"},
-		});
+		if (path.match(/\.go$/)) {
+			commands.push({
+				name: "complete", readOnly: false,
+				exec: function(editor) {
+					// TODO: merge last request if possible
+					doc.complete(editor.selection.getCursor());
+				},
+				bindKey: {win: "Ctrl-Space", mac:"Command-Space"},
+			});
+			commands.push({
+				name: "format", readOnly: false,
+				exec: function() {
+					doc.format(doc);
+				},
+				bindKey: {win: "Ctrl-Shift-F", mac:"Command-Shift-F"},
+			});
+		}
 		this.editor.commands.addCommands(commands);
 		if (this.line > 0) this.setLine(this.line);
 	},

@@ -3,18 +3,8 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base", "conn", "view/editor", "view/report", "view/docs", "lib/completion"],
-function(base, conn, createEditor, report, docs, completion) {
-
-function pathcrumbs(path) {
-	if (!path) return [];
-	var i = 0;
-	if (path[0] == "/") path = path.substr(1);
-	return _.map(path.split("/"), function(p){
-		i += p.length;
-		return [path.substr(0, i++), p];
-	});
-}
+define(["base", "conn", "view/editor", "view/report", "view/docs", "lib/completion", "lib/paths"],
+function(base, conn, createEditor, report, docs, completion, paths) {
 
 var File = Backbone.Model.extend({
 	idAttribute: "Id",
@@ -26,7 +16,7 @@ var File = Backbone.Model.extend({
 		return path + this.get("Name");
 	},
 	crumbs: function() {
-		return _.map(pathcrumbs(this.get("Path")), function(c) {
+		return _.map(paths.crumbs(this.get("Path")), function(c) {
 			return '<a href="#file/'+ c[0] +'">/'+c[1]+"</a>";
 		}).join("");
 	},
@@ -205,7 +195,7 @@ var ViewManager = Backbone.View.extend({
 		};
 	},
 	tilename: function(path) {
-		return _.map(_.last(pathcrumbs(path),2), function(p) {
+		return _.map(_.last(paths.crumbs(path),2), function(p) {
 			return p[1];
 		}).join("/") || path;
 	},

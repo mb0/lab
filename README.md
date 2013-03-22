@@ -31,10 +31,12 @@ Flag -addr=:80 uses another server address.
 
 Features:
  * Report view for go errors and test failures with links to sources.
- * Ace editor with gentle highlights and error markers go, js, css.
+ * Ace editor with gentle highlights and error markers for go, js and css.
  * Document collaboration with operational transformation.
  * External filesystem changes to open documents are merged.
- * godoc integration, Ctrl+Alt+Click on go import paths.
+ * godoc  Ctrl+Alt+Click on imports in go source files opens the doc view.
+ * gofmt  Ctrl+Shift+F changes the document (does not save to disk)
+ * gocode Ctrl+Space shows gocode completion proposals if installed.
  * Unity web launcher integration.
 
 I recommend using the Chrome browser, because the visual feedback seems faster than other browsers.

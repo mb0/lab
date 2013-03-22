@@ -75,7 +75,6 @@ var Popup = Backbone.View.extend({
 	},
 	attach: function(editor) {
 		if (this.editor !== null) this.detach();
-		console.log("attatch", editor);
 		this.editor = editor;
 		editor.keyBinding.addKeyboardHandler(this.keys);
 		_.each(this.listeners, function(v, k) {
@@ -83,7 +82,6 @@ var Popup = Backbone.View.extend({
 		}, editor);
 	},
 	detach: function(e) {
-		console.log("detatch", arguments);
 		_.each(this.listeners, function(v, k) {
 			this.removeEventListener(k, v);
 		}, this.editor);
@@ -148,7 +146,6 @@ var Popup = Backbone.View.extend({
 		}
 	},
 	render: function() {
-		console.log("render completion popup");
 		if (!this.proposals.length)
 			return this.detach();
 		// build lines from proposals
@@ -168,7 +165,6 @@ var Popup = Backbone.View.extend({
 		return this;
 	},
 	setData: function(data) {
-		console.log("show completions", data);
 		var props = _.filter(data.Proposed, function(e) {
 			return e.name != "_";
 		});

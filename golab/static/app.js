@@ -3,29 +3,14 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base"], function(base) {
-
-var Tile = Backbone.Model.extend({
-	defaults: {
-		id: null,
-		uri: null,
-		name: "unnamed",
-		closable: false,
-		active: false,
-		view: null
-	}
-});
-
-var Tiles = Backbone.Collection.extend({
-	model: Tile
-});
+define(["base", "tile"], function(base, tile) {
 
 var Tabs = base.ListView.extend({
 	itemView: base.ListItemView.extend({
 		template: _.template([
 			'<a href="#<%- get("uri") %>" <% if (get("active")) { %> class="active" <% } %>>',
 			'<%= get("name") %></a>',
-			'<% if (get("closable")) { %>',
+			'<% if (get("close")) { %>',
 			'<i class="close icon-remove" title="close"></i>',
 			'<% } %>',
 		].join('')),
@@ -46,13 +31,13 @@ var App = Backbone.View.extend({
 		this.listenTo(this.collection, "reset remove", this.render);
 	},
 	activate: function(id) {
-		if (this.active != null) {
+		if (this.active) {
 			if (this.active.get("id") == id) return;
 			this.active.set("active", false);
 			this.$cont.children().remove();
 		}
 		this.active = this.collection.get(id);
-		if (this.active != null) {
+		if (this.active) {
 			this.active.set("active", true);
 			this.$cont.append(this.active.get("view").$el);
 		}
@@ -69,23 +54,25 @@ var App = Backbone.View.extend({
 
 var Router = Backbone.Router.extend({
 	initialize: function(opts) {
-		this.tiles = opts.tiles || new Tiles([]);
+		this.tiles = opts.tiles || new tile.Tiles([]);
 		this.app = new App({collection: this.tiles}).render();
 		this.tiles.each(function(t) {
 			var id = t.get("id"), uri = t.get("uri");
 			this.route(uri, id, _.bind(this.app.activate, this.app, id));
 		}, this);
 		_.each(opts.tilerouters, function(tr) {
-			this.route(tr.route, tr.name, _.bind(this.maketile, this, tr));
+			this.route(tr.route, tr.name, _.bind(this.makeTile, this, tr));
 		}, this);
 		Backbone.history.start({});
 	},
-	maketile: function(tilerouter) {
-		var tiles = tilerouter.callback.apply(tilerouter, _.rest(arguments));
+	makeTile: function(tileRouter) {
+		var tiles = tileRouter.callback.apply(tileRouter, _.rest(arguments));
 		if (!tiles) return;
 		tiles = _.isArray(tiles) ? tiles : [tiles];
 		this.tiles.add(tiles);
-		var active = _.find(tiles, function(t) {return t.active;});
+		var active = _.find(tiles, function(t) {
+			return this.tiles.get(t.id).get("active");
+		}, this);
 		if (active) {
 			this.app.activate(active.id);
 		}
@@ -93,10 +80,7 @@ var Router = Backbone.Router.extend({
 });
 
 return {
-	Tile: Tile,
-	Tiles: Tiles,
 	App: App,
 	Router: Router,
 };
-
 });

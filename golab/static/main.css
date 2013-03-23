@@ -133,7 +133,7 @@ pre { padding-left: 15px;}
 	height: 2em;
 	margin: 0 0 0 50px;
 }
-.file .content ul {
+.folder > ul {
 	background-color: rgba(40, 40, 40, 1);
 	-webkit-box-shadow: inset 0 0 10px black;
 	-moz-box-shadow: inset 0 0 10px black;
@@ -145,7 +145,7 @@ pre { padding-left: 15px;}
 	top:28px; left:0; right:0; bottom: 0;
 	overflow: auto;
 }
-.file .content.ace_editor {
+.editor > .ace_editor {
 	line-height: 1.333em;
 	position: absolute;
 	top:28px; left:0; right:0; bottom: 0;

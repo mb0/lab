@@ -110,8 +110,8 @@ var Popup = Backbone.View.extend({
 	prefix: function(at) {
 		if (at.column <= 0) return "";
 		var c, l = this.editor.session.getLine(at.row);
-		for (c = at.column-1; c > 0; c--) {
-			if (l[c].match(/\W/)) break;
+		for (c = at.column; c > 1; c--) {
+			if (l[c-1].match(/\W/)) break;
 		}
 		return l.slice(c, at.column);
 	},

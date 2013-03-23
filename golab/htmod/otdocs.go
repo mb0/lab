@@ -207,8 +207,12 @@ func (mod *htmod) handlerev(head string, rev apiRev, doc *otdoc) {
 	case "revise":
 		ops, err := doc.Recv(rev.Rev, rev.Ops)
 		if err != nil {
-			log.Println(err)
-			return
+			to = rev.User
+			m, err = hub.Marshal("revise.err", struct {
+				apiRev
+				Err error
+			}{rev, err})
+			break
 		}
 		to = doc.GroupId()
 		m, err = hub.Marshal("revise", apiRev{
@@ -222,18 +226,15 @@ func (mod *htmod) handlerev(head string, rev apiRev, doc *otdoc) {
 		var f *os.File
 		f, err = os.OpenFile(doc.Path, os.O_WRONLY|os.O_TRUNC, 0)
 		if err != nil {
-			log.Println(err)
-			return
+			break
 		}
 		var n int
 		data := ([]byte)(*doc.Doc)
 		n, err = f.Write(data)
 		f.Close()
 		if err != nil {
-			log.Println(err)
-			return
+			break
 		}
-		f.Close()
 		if n < len(data) {
 			log.Println("short write")
 			return

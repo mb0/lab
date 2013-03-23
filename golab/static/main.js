@@ -18,8 +18,8 @@ require.config({
 	}
 });
 
-define(["conn", "app", "view/report", "view/docs", "view/file", "view/godoc", "unity"],
-function(conn, app, report, docs, file, godoc) {
+define(["conn", "tile", "app", "view/report", "view/docs", "view/file", "view/godoc", "unity"],
+function(conn, tile, app, report, docs, file, godoc) {
 
 $('<link>').attr({
 	type: "image/png",
@@ -56,7 +56,7 @@ var Html = Backbone.View.extend({
 
 new app.Router({
 	tilerouters: [file.router, godoc.router],
-	tiles: new app.Tiles([
+	tiles: new tile.Tiles([
 		{id: "about", uri: "about", name:'<i class="icon-beaker" title="about"></i>', view: new Html([
 			'<pre>',
 			'<h3>golab</h3>'+

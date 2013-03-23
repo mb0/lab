@@ -90,12 +90,12 @@ var ViewManager = Backbone.View.extend({
 	},
 	newtile: function(path, view) {
 		return {
-			id: view.id,
-			uri: "doc/"+path,
-			name: path,
-			view: view,
+			id:     view.id,
+			uri:    "doc/"+path,
+			name:   path,
+			view:   view,
 			active: true,
-			closable: true,
+			close:  true,
 		};
 	},
 });

@@ -3,21 +3,26 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["conn", "view/folder", "view/editor", "view/report", "lib/paths"],
-function(conn, folder, editor, report, paths) {
+define(["conn", "tile", "view/folder", "view/editor", "view/report", "lib/paths"],
+function(conn, tile, folder, editor, report, paths) {
 
 var FileView = Backbone.View.extend({
 	tagName: "section",
 	className: "file",
 	initialize: function(opts) {
+		this.id = _.uniqueId("file");
 		this.path = opts.path;
 		this.line = opts.line;
-		this.uri = "file"+this.path;
-		this.name = paths.shorten(this.path, 2);
-		this.view = this;
-		this.active = true;
-		this.closable = true;
+		this.tile = new tile.Tile({
+			id:     this.id,
+			uri:    "file"+this.path,
+			name:   paths.shorten(this.path, 2),
+			view:   this,
+			active: true,
+			close:  true,
+		});
 		this.content = null;
+		this.listenTo(this.tile, "remove", this.remove);
 		this.listenTo(conn, "msg:stat msg:stat.err", this.onstat);
 		conn.send("stat", this.path);
 	},
@@ -26,12 +31,13 @@ var FileView = Backbone.View.extend({
 	},
 	onstat: function(data) {
 		if (data.Path != this.path) return;
+		var opts = {el: this.el, model: data, tile: this.tile};
 		if (data.Error)  {
 			alert(data.Error);
 		} else if (data.IsDir || data.Children) {
-			this.content = new folder.View({el: this.el, model: data});
+			this.content = new folder.View(opts);
 		} else {
-			this.content = new editor.View({el: this.el, model: data});
+			this.content = new editor.View(opts);
 			if (this.line > 0) {
 				this.content.setLine(this.line);
 			}
@@ -98,13 +104,12 @@ var FileRouter = Backbone.View.extend({
 		path = pl.path;
 		var entry = this.map[path] || {view: null, markers: []};
 		if (!entry.view) {
-			pl.id = _.uniqueId("file");
 			entry.view = new FileView(pl);
 			this.map[path] = entry;
 		} else if (pl.line > 0 && entry.view.isEditor()) {
 			entry.view.content.setLine(pl.line);
 		}
-		return entry.view;
+		return entry.view.tile;
 	},
 });
 

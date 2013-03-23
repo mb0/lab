@@ -50,7 +50,7 @@ var FileView = Backbone.View.extend({
 var FileRouter = Backbone.View.extend({
 	initialize: function(opts) {
 		this.map = {}; // path: {view, annotations},
-		this.listenTo(report.view.reports, "add change reset", this.checkreports);
+		this.listenTo(report.view.reports, "add change reset", this.checkReports);
 		this.route = "file/*path";
 		this.name = "openfile";
 	},

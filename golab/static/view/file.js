@@ -18,7 +18,6 @@ var FileView = Backbone.View.extend({
 			uri:    "file"+this.path,
 			name:   paths.shorten(this.path, 2),
 			view:   this,
-			active: true,
 			close:  true,
 		});
 		this.content = null;
@@ -106,9 +105,13 @@ var FileRouter = Backbone.View.extend({
 		if (!entry.view) {
 			entry.view = new FileView(pl);
 			this.map[path] = entry;
+			entry.view.tile.on("remove", function(t) {
+				delete this.map[path];
+			}, this);
 		} else if (pl.line > 0 && entry.view.isEditor()) {
 			entry.view.content.setLine(pl.line);
 		}
+		entry.view.tile.set("active", true);
 		return entry.view.tile;
 	},
 });

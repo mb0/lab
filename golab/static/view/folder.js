@@ -55,14 +55,19 @@ var FolderView = Backbone.View.extend({
 	template: _.template(
 		'<header><i class="<%- getIcon() %>"></i> <%= getCrumbs() %></header>'
 	),
-	initialize: function() {
+	events: {
+		"click a": "navigate",
+	},
+	initialize: function(opts) {
+		this.tile = opts.tile;
 		this.$el.addClass("folder");
 		this.model = this.model.isValid ? this.model : new Folder(this.model);
 		this.children = new Files();
 		this.list = new FileList({collection:this.children});
-		this.$el.append($("<header>")).append(this.list.el)
+		this.$el.append($("<header>")).append(this.list.el);
 		this.listenTo(this.model, "change", this.render);
 		this.listenTo(this.model, "remove", this.remove);
+		this.listenTo(this.tile, "remove", this.remove);
 		this.render();
 	},
 	render: function() {
@@ -72,6 +77,15 @@ var FolderView = Backbone.View.extend({
 			return c;
 		}, this));
 		return this;
+	},
+	navigate: function(e) {
+		var href = $(e.currentTarget).attr("href");
+		if (!href || href.indexOf("http") === 0) return;
+		e.preventDefault();
+		if (e.button !== 1) { // middle click
+			this.tile.collection.remove(this.tile);
+		}
+		Backbone.history.navigate(href, {trigger: true});
 	},
 });
 

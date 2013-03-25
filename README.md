@@ -47,6 +47,9 @@ Yes please!
  * https://github.com/mb0/lab/issues
  * http://godoc.org/github.com/mb0/lab
 
+I lost the job and place where i lived just now and need to find new work in Germany fast.
+I would even work the first month for food and a place on a sofa. Please send me a mail mb0@mb0.org
+
 License
 -------
 golab is BSD licensed, Copyright (c) 2013 Martin Schnabel

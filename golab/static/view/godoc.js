@@ -3,7 +3,8 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["backbone"], function() {
+define(["tile", "backbone"],
+function(tile) {
 
 var DocView = Backbone.View.extend({
 	tagName: "section",
@@ -13,10 +14,19 @@ var DocView = Backbone.View.extend({
 		"click a[data-href]": "toggleLink",
 	},
 	initialize: function(opts) {
-		this.hash = "";
+		this.id = _.uniqueId("godoc");
+		this.path = opts.path;
+		this.tile = new tile.Tile({
+			id:    this.id,
+			uri:   "doc/"+ this.path,
+			name:  this.path,
+			view:  this,
+			close: true,
+		});
 		var view = this;
+		view.hash = "";
 		var hashes = location.hash.split('#');
-		$.get("/doc/"+opts.Path, function(data){
+		$.get("/doc/"+this.path, function(data){
 			data = data
 				.replace(/ href="#/g, ' data-href="#')
 				.replace(/ href="/g, ' href="#'+hashes[1]+'/')
@@ -68,18 +78,19 @@ var ViewManager = Backbone.View.extend({
 	initialize: function(opts) {
 		this.map = {}; // path: view,
 		this.route = "doc/*path";
-		this.name = "openfile";
+		this.name = "opengodoc";
 	},
 	callback: function(path) {
 		var ph = this.splithash(path);
 		path = ph[0];
 		var view = this.map[path];
 		if (!view) {
-			view = new DocView({id: _.uniqueId("doc"), Path: path});
+			view = new DocView({path: path});
 			this.map[path] = view;
 		}
 		if (ph.length > 1 && ph[1]) view.openHash(ph[1]);
-		return this.newtile(path, view);
+		view.tile.set("active", true);
+		return view.tile;
 	},
 	splithash: function(path) {
 		var pathhash = path.split("#");
@@ -87,17 +98,7 @@ var ViewManager = Backbone.View.extend({
 			pathhash[0] = pathhash[0].slice(0, pathhash[0].length-1);
 		}
 		return pathhash;
-	},
-	newtile: function(path, view) {
-		return {
-			id:     view.id,
-			uri:    "doc/"+path,
-			name:   path,
-			view:   view,
-			active: true,
-			close:  true,
-		};
-	},
+	}
 });
 
 return {

@@ -72,7 +72,7 @@ var EditorView = Backbone.View.extend({
 		var mode = modes.matchPath(this.model.getPath());
 		var renderer = ace.createRenderer(this.$editor.get(0));
 		var session = ace.createSession(this.doc.get("Ace"), mode.get("mode"));
-		this.editor = ace.createEditor(renderer, session);
+		this.editor = ace.createEditor(renderer, session, true);
 		this.editor.commands.addCommands(getCommands(this.doc));
 		if (this.line > 0) {
 			this.setLine(this.line);

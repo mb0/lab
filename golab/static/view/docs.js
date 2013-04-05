@@ -55,9 +55,14 @@ var DocsView = Backbone.View.extend({
 		this.listview = new DocList({collection:this.collection});
 		this.listenTo(conn, "msg:subscribe", this.onSubscribe);
 		this.listenTo(conn, "msg:revise", this.onRevise);
+		this.listenTo(conn, "msg:revise.err", this.panic);
 		this.listenTo(conn, "msg:publish", this.onPublish);
 		this.listenTo(conn, "msg:unsubscribe", this.onUnsubscribe);
 		this.render();
+	},
+	panic: function(data) {
+		console.log(data);
+		alert("doc panic "+ data.Err);
 	},
 	render: function() {
 		this.$el.html(this.template(this.model));
@@ -97,7 +102,7 @@ var DocsView = Backbone.View.extend({
 			err = doc.recvOps(data.Ops);
 		}
 		if (err !== null) {
-			console.log("revise error", err);
+			this.panic({Err: err});
 		}
 	},
 	onUnsubscribe: function(data) {

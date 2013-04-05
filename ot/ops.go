@@ -213,6 +213,7 @@ func Compose(a, b Ops) (ab Ops, err error) {
 			panic("This should never have happened.")
 		}
 	}
+	ab = Merge(ab)
 	return
 }
 

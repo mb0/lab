@@ -62,6 +62,7 @@ Client code and asset attributions
  * Backbone (c) Jeremy Ashkenas (MIT License)
  * Ace (c) Ajax.org B.V. (BSD License)
  * Font Awesome by Dave Gandy (SIL, MIT and CC BY 3.0 License)
+ * Qunit (c) jQuery Foundation and others (MIT License)
 
 Recycled code attribution // was easier than adapting to golab
  * ot.js (c) Tim Baumann (MIT License)

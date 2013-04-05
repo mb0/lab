@@ -92,8 +92,8 @@ var composeTests = []struct {
 	},
 	{
 		a:  Ops{{N: 1}, {S: "tag"}},
-		b:  Ops{{N: 2}, {N: -2}},
-		ab: Ops{{N: 1}, {S: "t"}},
+		b:  Ops{{N: 2}, {N: -1}, {N: 1}},
+		ab: Ops{{N: 1}, {S: "tg"}},
 	},
 }
 

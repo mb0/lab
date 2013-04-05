@@ -4,7 +4,7 @@ golab is a Go IDE for Linux.
 
 Install
 -------
-Requires Linux and Go tip.
+Requires Linux and Go 1.1.
 
 	go get github.com/mb0/lab/golab
 	echo "yay! magic!"

@@ -65,7 +65,7 @@ function merge(ops) { // returns ops
 		} else {
 			res.push(op);
 		}
-		lastop = op;
+		lastop = res[res.length-1];
 	}
 	return res;
 }

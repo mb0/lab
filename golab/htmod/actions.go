@@ -105,7 +105,7 @@ func (mod *htmod) actionRoute(m hub.Msg, from hub.Id) {
 		if len(data) < 10 {
 			return
 		}
-		data = data[4:len(data)-1]
+		data = data[4 : len(data)-1]
 		m, err = hub.Marshal("complete", struct {
 			actionReq
 			Proposed *json.RawMessage

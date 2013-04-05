@@ -9,20 +9,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/build"
+	"go/format"
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 
 	"github.com/mb0/lab/hub"
 	"github.com/mb0/lab/ws"
+	"path/filepath"
 )
 
-var (
-	gofmt  string
-	gocode string
-)
+var gocode string
 
 func exists(dir, rel string) string {
 	cmd := filepath.Join(dir, rel)
@@ -35,13 +33,12 @@ func exists(dir, rel string) string {
 func init() {
 	root := runtime.GOROOT()
 	list := filepath.SplitList(build.Default.GOPATH)
-	gofmt = exists(root, "bin/gofmt")
 	for _, p := range append(list, root) {
 		if gocode = exists(p, "bin/gocode"); gocode != "" {
 			break
 		}
 	}
-	log.Println("found tools:", gofmt, gocode)
+	log.Println("found gocode at:", gocode)
 }
 
 type actionReq struct {
@@ -67,10 +64,9 @@ func (mod *htmod) actionRoute(m hub.Msg, from hub.Id) {
 		log.Println("document not a go file", doc.Path)
 		return
 	}
-	var cmd *exec.Cmd
 	switch {
 	case m.Head == "complete" && gocode != "":
-		cmd = &exec.Cmd{
+		cmd := &exec.Cmd{
 			Path: gocode,
 			Args: []string{
 				"gocode",
@@ -79,29 +75,16 @@ func (mod *htmod) actionRoute(m hub.Msg, from hub.Id) {
 				fmt.Sprint(req.Offs),
 			},
 		}
-	case m.Head == "format" && gofmt != "":
-		cmd = &exec.Cmd{
-			Path: gofmt,
-			Args: []string{
-				"gofmt",
-			},
+		var buf bytes.Buffer
+		doc.Lock()
+		buf.Write(([]byte)(*doc.Doc))
+		doc.Unlock()
+		cmd.Stdin = &buf
+		data, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Println(err, data)
+			return
 		}
-	default:
-		log.Println("unexpected msg", m.Head)
-		return
-	}
-	var buf bytes.Buffer
-	doc.Lock()
-	buf.Write(([]byte)(*doc.Doc))
-	doc.Unlock()
-	cmd.Stdin = &buf
-	data, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Println(err, data)
-		return
-	}
-	switch {
-	case m.Head == "complete":
 		if len(data) < 10 {
 			return
 		}
@@ -118,10 +101,18 @@ func (mod *htmod) actionRoute(m hub.Msg, from hub.Id) {
 	case m.Head == "format":
 		doc.Lock()
 		defer doc.Unlock()
+		data, err := format.Source(([]byte)(*doc.Doc))
+		if err != nil {
+			log.Println(err, data)
+		}
 		rev := doc.Rev()
 		ops := doc.diffops(data)
 		if ops != nil {
 			mod.handlerev("revise", apiRev{Id: req.Id, Rev: rev, Ops: ops}, doc)
 		}
+		return
+	default:
+		log.Println("unexpected msg", m.Head)
+		return
 	}
 }

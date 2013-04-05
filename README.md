@@ -37,7 +37,6 @@ Features:
  * godoc  Ctrl+Alt+Click on imports in go source files opens the doc view.
  * gofmt  Ctrl+Shift+F changes the document (does not save to disk)
  * gocode Ctrl+Space shows gocode completion proposals if installed.
- * Unity web launcher integration.
 
 I recommend using the Chrome browser, because the visual feedback seems faster than other browsers.
 

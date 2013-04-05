@@ -18,7 +18,7 @@ require.config({
 	}
 });
 
-define(["conn", "tile", "app", "view/report", "view/docs", "view/file", "view/godoc", "unity"],
+define(["conn", "tile", "app", "view/report", "view/docs", "view/file", "view/godoc"],
 function(conn, tile, app, report, docs, file, godoc) {
 
 $('<link>').attr({

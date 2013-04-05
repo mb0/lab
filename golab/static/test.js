@@ -18,7 +18,11 @@ require.config({
 	}
 });
 
-define(["lib/sot"], function(sot) {
+define(["lib/sot", "underscore"], function(sot) {
+
+test("utf8len", function() {
+	equal(sot.utf8len("ä"), 2, "umlaut length");
+});
 
 test("ops count", function() {
 	var o = [];
@@ -34,8 +38,38 @@ test("ops count", function() {
 	checklen(5, 8);
 	o.push(2);
 	checklen(7, 10);
-	o.push(-2)
+	o.push(-2);
 	checklen(9, 10);
+});
+
+test("ops merge", function() {
+	var o = [5, 2, 0, "lo", "rem", 0, -3, -2, 0];
+	deepEqual(sot.merge(o), [7, "lorem", -5]);
+});
+
+var composeTests = [
+	{
+		a:  [3, -1],
+		b:  [1, "tag", 2],
+		ab: [1, "tag", 2, -1],
+	},
+	{
+		a:  [1, "tag", 2],
+		b:  [4, -2],
+		ab: [1, "tag", -2],
+	},
+	{
+		a:  [1, "tag"],
+		b:  [2, -1, 1],
+		ab: [1, "tg"],
+	}
+];
+test("ops compose", function() {
+	_.each(composeTests, function(c) {
+		var res = sot.compose(c.a, c.b);
+		equal(res[1], null, "error check");
+		deepEqual(res[0], c.ab);
+	});
 });
 
 });

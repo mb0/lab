@@ -118,7 +118,7 @@ function compose(a, b) { // returns [ab, err]
 		} else if (ta == "string" && ob < 0) { // insert delete
 			od = utf8len(oa) + ob;
 			if (od > 0) {
-				oa = oa.substr(1-ob);
+				oa = oa.substr(-ob);
 				ob = b[ib++];
 			} else if (od < 0) {
 				ob = od;
@@ -131,7 +131,7 @@ function compose(a, b) { // returns [ab, err]
 			od = utf8len(oa) - ob;
 			if (od > 0) {
 				res.push(oa.substr(0, ob));
-				oa = oa.substr(ob+1);
+				oa = oa.substr(ob);
 				ob = b[ib++];
 			} else if (od < 0) {
 				ob = -od;

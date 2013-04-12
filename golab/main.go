@@ -76,6 +76,10 @@ func (l *golab) Filter(r *ws.Res) bool {
 		case ".swp", ".swo":
 			return true
 		}
+		switch r.Name[len(r.Name)-5:] {
+		case ".swpx":
+			return true
+		}
 	}
 	for _, f := range l.filters {
 		if f.Filter(r) {

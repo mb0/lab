@@ -82,6 +82,7 @@ var FolderView = Backbone.View.extend({
 		var href = $(e.currentTarget).attr("href");
 		if (!href || href.indexOf("http") === 0) return;
 		e.preventDefault();
+		if (href == "#"+ this.tile.get("uri")) return;
 		if (e.button !== 1) { // middle click
 			this.tile.collection.remove(this.tile);
 		}

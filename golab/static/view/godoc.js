@@ -3,7 +3,7 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["tile", "backbone"],
+define(["tile", "underscore", "zepto", "backbone"],
 function(tile) {
 
 var DocView = Backbone.View.extend({
@@ -23,21 +23,21 @@ var DocView = Backbone.View.extend({
 			view:  this,
 			close: true,
 		});
-		var view = this;
-		view.hash = "";
+		this.hash = "";
+		$.get("/doc/"+this.path, _.bind(this.onReceive, this));
+	},
+	onReceive: function(data) {
 		var hashes = location.hash.split('#');
-		$.get("/doc/"+this.path, function(data){
-			data = data
-				.replace(/ href="#/g, ' data-href="#')
-				.replace(/ href="/g, ' href="#'+hashes[1]+'/')
-				.replace(/ id="/g, ' data-id="');
-			view.$el.html(data);
-			var hash = view.hash;
-			if (hash) {
-				view.hash = null;
-				view.openHash(hash);
-			}
-		});
+		data = data
+			.replace(/ href="#/g, ' data-href="#')
+			.replace(/ href="/g, ' href="#'+hashes[1]+'/')
+			.replace(/ id="/g, ' data-id="');
+		this.$el.html(data);
+		var hash = this.hash;
+		if (hash) {
+			this.hash = "";
+			this.openHash(hash);
+		}
 	},
 	render: function() {
 		return this;
@@ -74,13 +74,13 @@ var DocView = Backbone.View.extend({
 	}
 });
 
-var ViewManager = Backbone.View.extend({
-	initialize: function(opts) {
-		this.map = {}; // path: view,
-		this.route = "doc/*path";
-		this.name = "opengodoc";
-	},
-	callback: function(path) {
+var DocRouter = function(opts) {
+	this.map = {}; // path: view,
+	this.route = "doc/*path";
+	this.name = "opengodoc";
+};
+DocRouter.prototype = {
+	tiles: function(path) {
 		var ph = this.splithash(path);
 		path = ph[0];
 		var view = this.map[path];
@@ -99,10 +99,10 @@ var ViewManager = Backbone.View.extend({
 		}
 		return pathhash;
 	}
-});
+};
 
 return {
 	View: DocView,
-	router: new ViewManager(),
+	router: new DocRouter(),
 };
 });

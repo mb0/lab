@@ -86,7 +86,7 @@ var Router = Backbone.Router.extend({
 		Backbone.history.start({});
 	},
 	makeTile: function(tileRouter) {
-		var tiles = tileRouter.callback.apply(tileRouter, _.rest(arguments));
+		var tiles = tileRouter.tiles.apply(tileRouter, _.rest(arguments));
 		if (!tiles) return;
 		tiles = _.isArray(tiles) ? tiles : [tiles];
 		this.tiles.add(tiles);

@@ -47,13 +47,14 @@ var FileView = Backbone.View.extend({
 	},
 });
 
-var FileRouter = Backbone.View.extend({
-	initialize: function(opts) {
-		this.map = {}; // path: {view, annotations},
-		this.listenTo(report.view.reports, "add change reset", this.checkReports);
-		this.route = "file/*path";
-		this.name = "openfile";
-	},
+var FileRouter = function() {
+	this.map = {}; // path: {view, annotations},
+	this.route = "file/*path";
+	this.name = "openfile";
+	_.extend(this, Backbone.Events);
+	this.listenTo(report.view.reports, "add change reset", this.checkReports);
+};
+FileRouter.prototype = {
 	checkReports: function() {
 		var reports = report.view.reports;
 		// check for markers and add to map
@@ -98,7 +99,7 @@ var FileRouter = Backbone.View.extend({
 			if (editor) editor.session.setAnnotations(e.markers);
 		});
 	},
-	callback: function(path) {
+	tiles: function(path) {
 		var pl = paths.splitHashLine("/"+path);
 		path = pl.path;
 		var entry = this.map[path] || {view: null, markers: []};
@@ -114,7 +115,7 @@ var FileRouter = Backbone.View.extend({
 		entry.view.tile.set("active", true);
 		return entry.view.tile;
 	},
-});
+};
 
 return {
 	router: new FileRouter(),

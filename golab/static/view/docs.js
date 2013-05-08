@@ -21,7 +21,8 @@ function getIcon(name, defaultIcon) {
 
 var Doc = sotdoc.Doc.extend({
 	icon: function() {
-		return getIcon(this.get("Status"), "icon-cloud");
+		var status = this.get("Rev") === 0 ? "published" : this.get("Status");
+		return getIcon(status, "icon-cloud");
 	},
 	publish: function() {
 		conn.send("publish", {Id: this.get("Id")});

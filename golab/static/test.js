@@ -81,7 +81,7 @@ var transformTests = [
 		b:  [2, -1],
 		a1: [1, "tag", 1],
 		b1: [5, -1],
-	},/*
+	},
 	{
 		a:  [1, "tag", 2],
 		b:  [1, "tag", 2],
@@ -99,7 +99,7 @@ var transformTests = [
 		b:  [1, -2],
 		a1: [1],
 		b1: [1, -1],
-	},*/
+	},
 ];
 test("ops transform", function() {
 	_.each(transformTests, function(c) {

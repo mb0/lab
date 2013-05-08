@@ -64,7 +64,7 @@ new app.Router({
 			'<a href="https://raw.github.com/mb0/lab/master/LICENSE">BSD License</a>',
 			'</pre>'
 		].join('\n'))},
-		{id: "index", uri: "", name:'<i class="icon-circle" title="report"/></i>', view: report.view},
+		report.view.tile,
 		{id: "docs", uri: "docs", name:'<i class="icon-inbox" title="documents"/></i>', view: docs.view},
 	])
 });

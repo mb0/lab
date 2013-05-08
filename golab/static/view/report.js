@@ -3,7 +3,7 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base", "conn"], function(base, conn) {
+define(["base", "conn", "tile"], function(base, conn, tile) {
 
 var Report = Backbone.Model.extend({
 	idAttribute: "Id",
@@ -79,6 +79,12 @@ var ReportView = Backbone.View.extend({
 		this.reports = new Reports();
 		this.listview = new ReportList({collection:this.reports});
 		this.listenTo(conn, "msg:report msg:reports", this.addreports);
+		this.tile = new tile.Tile({
+			id:    "index",
+			uri:   "",
+			name:  '<i class="icon-circle" title="report"/></i>',
+			view:  this,
+		});
 		this.render();
 	},
 	render: function() {

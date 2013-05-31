@@ -3,24 +3,46 @@ Copyright 2013 Martin Schnabel. All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
 */
-define(["base", "tile"], function(base, tile) {
+define(["backbone", "tile"], function(base, tile) {
 
-var Tab = base.ListItemView.extend({
-	template: _.template([
-		'<a href="#<%- get("uri") %>" <% if (get("active")) { %> class="active" <% } %>>',
-		'<%= get("name") %></a>',
-		'<% if (get("close")) { %>',
-		'<i class="close icon-remove" title="close"></i>',
-		'<% } %>',
-	].join('')),
+var Tab = Backbone.View.extend({
+	tagName: "li",
 	events: { "click .close": "removeModel"},
+	initialize: function() {
+		this.listenTo(this.model, "change", this.render);
+		this.listenTo(this.model, "remove", this.remove);
+		this.$a = $("<a>").appendTo(this.$el);
+		if (this.model.get("close")) {
+			$('<i class="close icon-remove" title="close"></i>').appendTo(this.$el);
+		}
+	},
+	render: function() {
+		this.$a.attr("href", "#"+ this.model.get("uri"));
+		if (this.model.get("active") != this.$a.hasClass("active")) {
+			this.$a.toggleClass("active");
+		}
+		this.$a.html(this.model.get("name"));
+		return this;
+	},
 	removeModel: function() {
 		this.collection.remove(this.model);
-	}
+	},
 });
 
-var Tabs = base.ListView.extend({
-	itemView: Tab
+var Tabs = Backbone.View.extend({
+	tagName: "ul",
+	initialize: function() {
+		this.listenTo(this.collection, "add", this.addOne);
+		this.listenTo(this.collection, "reset", this.render);
+	},
+	render: function() {
+		this.collection.each(this.addOne, this);
+		return this;
+	},
+	addOne: function(model) {
+		var v = new Tab({model: model, collection: this.collection});
+		this.$el.append(v.render().el);
+	},
 });
 
 var App = Backbone.View.extend({

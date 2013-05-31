@@ -107,6 +107,12 @@ var EditorView = Backbone.View.extend({
 			this.line = l;
 		}
 	},
+	remove: function() {
+		this.editor.destroy();
+		this.editor = null;
+		this.$editor = null;
+		Backbone.View.prototype.remove.call(this);
+	},
 });
 
 return {

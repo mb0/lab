@@ -45,6 +45,11 @@ var FileView = Backbone.View.extend({
 	isEditor: function() {
 		return this.content && this.content.$el && this.content.$el.hasClass("editor");
 	},
+	remove: function() {
+		this.content.remove();
+		this.content = null;
+		Backbone.View.prototype.remove.call(this);
+	},
 });
 
 var FileRouter = function() {

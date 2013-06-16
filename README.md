@@ -2,12 +2,14 @@ golab
 =====
 golab is a Go IDE for Linux.
 
+![golab screenshot][screenshot]
+
 Install
 -------
 Requires Linux and Go 1.1.
 
 	go get github.com/mb0/lab/golab
-	echo "yay! magic!"
+	echo 'yay! magic!'
 
 Basic CLI
 ---------
@@ -66,3 +68,5 @@ Client code and asset attributions
 
 Recycled code attribution // was easier than adapting to golab
  * ot.js (c) Tim Baumann (MIT License)
+
+[screenshot]: https://raw.github.com/mb0/lab/master/screenshot.png

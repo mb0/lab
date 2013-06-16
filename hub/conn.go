@@ -29,7 +29,7 @@ type conn struct {
 }
 
 func newconn(w http.ResponseWriter, r *http.Request) (*conn, error) {
-	wconn, err := websocket.Upgrade(w, r.Header, "", 1024, 1024)
+	wconn, err := websocket.Upgrade(w, r.Header, nil, 1024, 1024)
 	if err != nil {
 		return nil, err
 	}

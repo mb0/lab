@@ -1,0 +1,39 @@
+/*
+Copyright 2013 Martin Schnabel. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+*/
+#report {
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+}
+.report-ok {
+	background-color: #426842;
+}
+.report-ok .status {
+	background-color: #5bb05b;
+}
+.report-fail {
+	background-color: #684242;
+}
+.report-fail .status  {
+	background-color: #b05b5b;
+}
+.report .status i {
+	float: right;
+	padding: 7px;
+	font-size: 10px;
+	cursor: pointer;
+}
+.report > span {
+	display: inline-block;
+	width: 65px;
+	padding: 0 8px;
+	cursor: default;
+}
+.report > pre {
+	background-color: #353f35;
+	margin: 0 0 0 81px;
+	padding-left: 10px;
+}

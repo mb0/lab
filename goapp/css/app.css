@@ -1,0 +1,25 @@
+/*
+Copyright 2013 Martin Schnabel. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+*/
+body {
+	padding: 0; margin: 0;
+	font-family: "Ubuntu Mono" monospace;
+	font-size: 16px;
+	line-height: 1.555em;
+}
+ul { padding: 0; margin: 0; list-style: none;}
+a { text-decoration: none; cursor: pointer;}
+pre { padding-left: 15px;}
+#app {
+	position: absolute;
+	top:25px; left:0; right:0; bottom: 0;
+	overflow: hidden;
+	color: #E6E1DC;
+	background-color: #202020;
+	text-shadow: 0 1px 2px #202020;
+}
+#app a {
+	color: #CFAEA9;
+}

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-angular.module("goapp", ["goapp.conn", "goapp.report"])
+angular.module("goapp", ["goapp.conn", "goapp.report", "goapp.file"])
 .config(function($routeProvider, $logProvider) {
 	$routeProvider
 	.when("/about", {
@@ -16,6 +16,10 @@ angular.module("goapp", ["goapp.conn", "goapp.report"])
 	})
 	.when("/report", {
 		template: '<div id="report" report></div>',
+	})
+	.when("/file/*path", {
+		controller: "FileCtrl",
+		template: '<div>file</div>',
 	})
 	.otherwise({
 		redirectTo: "/report",

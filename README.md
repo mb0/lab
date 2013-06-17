@@ -11,25 +11,30 @@ Requires Linux and Go 1.1.
 	go get github.com/mb0/lab/golab
 	echo 'yay! magic!'
 
-Basic CLI
----------
-Flag -work='./...' specifies a path list to your packages.
-The default uses the current directory and all it child packages.
+Basic Usage
+-----------
+`golab` watches all files under your goroot and gopath (`go help gopath`).
+It automatically installs and tests a list of packages specified by the `-work` flag and prints colored reports to stdout.
 
-	cd $GOROOT
-	golab -work=src/pkg/bytes:./src/pkg/hash/...:$GOROOT/src/pkg/log
+Flag `-work` specifies a path list to the packages you are working on.
+Multiple paths can be seperated by a colon `:`.
+The default `./...` uses the current directory and all it child packages.
 
-Features:
- * Automatically installs and tests your packages on change.
- * Prints colored reports to stdout.
+Example:
+
+	cd $GOPATH/src/github.com/mb0
+	golab -work=../garyburd/go-websocket/websocket:./lab/...
 
 Html5 UI
 --------
-Flag -http starts a http server at localhost:8910.
-Flag -addr=:80 uses another server address.
+`golab -http` starts a web interface for reports and collaborative editing of text files.
 
-	cd ~/go/src/github.com/mb0/lab
-	golab -http
+Flag `-addr=localhost:8910` specifies the http address.
+
+Example:
+
+	cd $GOPATH/src
+	golab -http -addr=:80 -work=github.com/mb0/lab/...
 
 Features:
  * Report view for go errors and test failures with links to sources.

@@ -1,11 +1,9 @@
-/*
-Copyright 2013 Martin Schnabel. All rights reserved.
-Use of this source code is governed by a BSD-style
-license that can be found in the LICENSE file.
-*/
+// Copyright 2013 Martin Schnabel. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 angular.module("goapp", ["goapp.conn", "goapp.report"])
-.config(
-function($routeProvider) {
+.config(function($routeProvider, $logProvider) {
 	$routeProvider
 	.when("/about", {
 		template: [
@@ -20,9 +18,10 @@ function($routeProvider) {
 		template: '<div id="report" report></div>',
 	})
 	.otherwise({
-		redirectTo: "/",
+		redirectTo: "/report",
 	});
+	$logProvider.debugEnabled(true);
 })
-.run(function(conn, reportService) {
-	conn.connect();
+.run(function(conn) {
+	conn.connect("ws://localhost:8910/ws");
 });

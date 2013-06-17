@@ -1,59 +1,56 @@
-/*
-Copyright 2013 Martin Schnabel. All rights reserved.
-Use of this source code is governed by a BSD-style
-license that can be found in the LICENSE file.
-*/
+// Copyright 2013 Martin Schnabel. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 angular.module("goapp.conn", [])
-.service("conn",
-function($rootScope, $location) {
-	var c = this;
-	c.url = "ws://"+ $location.host() +"/ws";
-	c.url = "ws://localhost:8910/ws";
-	c.conn = null;
-	c.queue = [];
-	c.debug = true;
-	c.log = function(name, data) {
-		if (c.debug) console.log(name, data);
-	};
-	c.trigger = function(name, data, head) {
-		c.log(name, data);
-		$rootScope.$emit(name, data);
-	};
-	c.connect = function() {
-		c.log("conn.connect", c.url);
-		c.conn = new WebSocket(c.url);
-		c.conn.onopen = function(e) {
-			c.trigger("conn.open", e);
-			if (c.queue.length) {
-				c.log("conn.work", c.queue);
-				for (var i=0; i<c.queue.length; i++) {
-					c.conn.send(c.queue[i]);
+.factory("conn", function($rootScope, $log, $location) {
+	function log(name, data) {
+		$log.debug("conn."+name, data);
+	}
+	function trigger(name, data) {
+		$log.debug("conn."+name, data);
+		$rootScope.$emit("conn."+name, data);
+	}
+	var queue = [];
+	var conn = {connected: false};
+	conn.connect = function(url) {
+		if (url === undefined) {
+			url = "ws://"+ $location.host() +"/ws";
+		}
+		log("connect", url);
+		ws = new WebSocket(url);
+		ws.onopen = function(e) {
+			conn.connected = true;
+			trigger("open", e);
+			if (queue.length) {
+				log("work", queue);
+				for (var i=0; i<queue.length; i++) {
+					ws.send(JSON.stringify(queue[i]));
 				}
-				c.queue = [];
+				queue = [];
 			}
 		};
-		c.conn.onclose = function(e) {
-			c.conn = null;
-			c.trigger("conn.close", e);
+		ws.onclose = function(e) {
+			ws = null;
+			conn.connected = false;
+			trigger("close", e);
 		};
-		c.conn.onerror = function(e) {
-			c.trigger("conn.error", e);
+		ws.onerror = function(e) {
+			trigger("error", e);
 		};
-		c.conn.onmessage = function(e) {
-			var msg = JSON.parse(e.data);
-			c.trigger("conn.msg", msg);
+		ws.onmessage = function(e) {
+			trigger("msg", JSON.parse(e.data));
 		};
 	};
-	c.connected = function() {
-		return c.conn !== null;
-	};
-	c.send = function(head, data) {
-		var msg = JSON.stringify({"Head": head, "Data": data});
-		if (c.connected()) {
-			c.log("conn.send", msg);
+	conn.send = function(head, data) {
+		var msg = {"Head": head, "Data": data};
+		if (conn.connected) {
+			log("send", msg);
+			ws.send(JSON.stringify(msg));
 		} else {
-			c.log("conn.queue", head);
-			c.queue.push(msg);
+			log("queue", head);
+			queue.push(msg);
 		}
 	};
+	return conn;
 });

@@ -15,10 +15,19 @@ import (
 	"runtime"
 )
 
-var godoctool = filepath.Join(runtime.GOROOT(), "bin/godoc")
-var godoctmpl string
+var godoctool, godoctmpl string
 
 func init() {
+	path := filepath.Join(runtime.GOROOT(), "bin/godoc")
+	_, err := os.Stat(path)
+	if err != nil {
+		path, err = exec.LookPath("godoc")
+		if err != nil {
+			fmt.Println("could not find godoc")
+			path = ""
+		}
+	}
+	godoctool = path
 	tmpl := findTemplate()
 	if tmpl != "" {
 		godoctmpl = "-templates=" + tmpl

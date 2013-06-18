@@ -6,6 +6,7 @@ package gosrc
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -18,6 +19,16 @@ var gotool = filepath.Join(runtime.GOROOT(), "bin/go")
 var testexe = ".test"
 
 func init() {
+	path := filepath.Join(runtime.GOROOT(), "bin/go")
+	_, err := os.Stat(path)
+	if err != nil {
+		path, err = exec.LookPath("go")
+		if err != nil {
+			fmt.Println("could not find go tool")
+			path = ""
+		}
+	}
+	gotool = path
 	if runtime.GOOS == "windows" {
 		testexe += ".exe"
 	}

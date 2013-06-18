@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-angular.module("goapp", ["goapp.conn", "goapp.report", "goapp.file"])
+angular.module("goapp", ["goapp.conn", "goapp.report", "goapp.file", "goapp.tabs"])
 .config(function($routeProvider, $logProvider) {
 	$routeProvider
 	.when("/about", {

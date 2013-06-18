@@ -43,7 +43,7 @@ angular.module("goapp.report", ["goapp.conn"])
 		template: [
 			'<ul><li class="report report-{{r.Status}}" ng-repeat="r in reports.list | orderBy:\'Path\'">',
 			'<span class="status">{{r.Status|uppercase}} <i ng-show="r.Output" ng-click="r.Detail = !r.Detail" class="{{ r.Detail|reportIcon }}"></i></span>',
-			'<span>{{r.Res.Mode}}</span> {{r.Path}}',
+			'<span>{{r.Res.Mode}}</span> <a href="#/file{{ r.Dir }}">{{r.Path}}</a>',
 			'<pre ng-show="r.Output && r.Detail" ng-bind-html-unsafe="r.Output"></pre>',
 			'</li></ul>',
 		].join(""),

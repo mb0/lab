@@ -18,8 +18,7 @@ angular.module("goapp", ["goapp.conn", "goapp.report", "goapp.file"])
 		template: '<div id="report" report></div>',
 	})
 	.when("/file/*path", {
-		controller: "FileCtrl",
-		template: '<div>file</div>',
+		template: '<div file></div>',
 	})
 	.otherwise({
 		redirectTo: "/report",

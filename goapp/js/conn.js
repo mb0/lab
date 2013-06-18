@@ -9,7 +9,7 @@ angular.module("goapp.conn", [])
 	}
 	function trigger(name, data) {
 		$log.debug("conn."+name, data);
-		$rootScope.$emit("conn."+name, data);
+		$rootScope.$broadcast("conn."+name, data);
 	}
 	var queue = [];
 	var conn = {connected: false};

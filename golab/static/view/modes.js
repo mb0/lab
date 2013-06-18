@@ -27,7 +27,14 @@ return new Modes(_.map({
 	json: "json",
 	markdown: "md|markdown",
 	text: "txt",
-	xml: "xml|rdf|rss|wsdl|xslt|atom|mathml|mml|xul|xbl"
+	xml: "xml|rdf|rss|wsdl|xslt|atom|mathml|mml|xul|xbl",
+	c_cpp: "c|cc|cpp|cxx|h|hh|hpp",
+	diff: "diff|patch",
+	sql: "sql",
+	svg: "svg",
+	tcl: "tcl",
+	toml: "toml",
+	yaml: "yaml",
 }, function(val, key) {
 	return {
 		name: key,

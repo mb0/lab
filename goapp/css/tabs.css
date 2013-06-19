@@ -14,3 +14,16 @@ license that can be found in the LICENSE file.
 	display: inline-block;
 	margin: 3px;
 }
+#tabs a, #tabs a:visited {
+	color: inherit;
+}
+#tabs a:hover {
+	color: #000000;
+}
+#tabs .active a {
+	text-decoration: underline;
+}
+#tabs .active i {
+	text-decoration: none;
+	font-size: 120%;
+}

@@ -21,7 +21,7 @@ angular.module("goapp", ["goapp.conn", "goapp.report", "goapp.file", "goapp.tabs
 	})
 	.when("/file/*path", {
 		template: '<div file></div>',
-		tabs: {"/file/a/b": {name:"a/b", close:true}},
+		tabs: {},
 	})
 	.otherwise({
 		redirectTo: "/report",

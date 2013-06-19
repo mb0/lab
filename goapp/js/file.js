@@ -11,12 +11,6 @@ angular.module("goapp.file", ["goapp.conn"])
 	if ($location.hash().match(/^L\d+$/)) {
 		line = parseInt($location.hash().slice(1), 10);
 	}
-	$scope.fileIcon = function(child) {
-		if (!child.IsDir) {
-			return 'icon-file-alt';
-		}
-		return 'icon-folder-open-alt';
-	};
 	$scope.childIcon = function(child) {
 		if (!child.IsDir) {
 			return 'icon-file-alt';
@@ -24,8 +18,11 @@ angular.module("goapp.file", ["goapp.conn"])
 		return 'icon-folder-close-alt';
 	};
 	$scope.fileHeader = function(file) {
+		if (!file) return "";
 		var path = file.Path;
-		if (path[0] == "/") path = path.substr(1);
+		if (path[0] == "/") {
+			path = path.substr(1);
+		}
 		var i, l = 0, parts = path.split("/");
 		var result = ['<i class="'+(file.IsDir ? 'icon-folder-open-alt' : 'icon-file-alt')+'"></i> '];
 		for (i=0; i < parts.length; i++) {
@@ -41,9 +38,16 @@ angular.module("goapp.file", ["goapp.conn"])
 		} else if (msg.Head == "stat.err" && msg.Data.Path == path) {
 			$scope.file = msg.Data;
 			$scope.$digest();
-			$scope.file.error = "error: path "+path +" "+ msg.Data.Error;
 		}
 	});
+	function shorten(path) {
+		var parts = path.split("/");
+		if (parts.length > 1) {
+			return parts[parts.length-2]+"/"+parts[parts.length-1];
+		}
+		return path;
+	}
+	$scope.tabs.add("/file/*path", {link: "/file"+path, name: shorten(path), close: true});
 	conn.send("stat", path);
 	$scope.$on("$destroy", dereg);
 })

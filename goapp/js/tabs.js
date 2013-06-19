@@ -15,6 +15,10 @@ angular.module("goapp.tabs", [])
 			tabs.list.push(tab);
 		}
 	}
+	tabs.add = function(route, tab) {
+		$route.routes[route].tabs[tab.link] = tab;
+		tabs.list.push(tab);
+	};
 	$rootScope.$on("$routeChangeSuccess", function(e, cur){
 		if (tabs.activeTab) {
 			tabs.activeTab.active = false;

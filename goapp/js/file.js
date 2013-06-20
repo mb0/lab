@@ -33,7 +33,7 @@ angular.module("goapp.file", ["goapp.conn"])
 		}
 		return 'icon-folder-close-alt';
 	};
-	$scope.fileHeader = function(file) {
+	function fileHeader(file) {
 		if (!file) return "";
 		var path = file.Path;
 		if (path[0] == "/") {
@@ -46,12 +46,11 @@ angular.module("goapp.file", ["goapp.conn"])
 			result.push('<a href="#/file/'+path.substr(0,l++)+'">/'+parts[i]+'</a>');
 		}
 		return result.join("");
-	};
+	}
 	var dereg = $scope.$on("conn.msg", function(e, msg) {
-		if (msg.Head == "stat" && msg.Data.Path == path) {
-			$scope.file = msg.Data;
-			$scope.$digest();
-		} else if (msg.Head == "stat.err" && msg.Data.Path == path) {
+		if ((msg.Head == "stat" || msg.Head == "stat.err") && msg.Data.Path == path) {
+			msg.Data.header = fileHeader(msg.Data);
+			msg.Data.state = msg.Data.Error ? "error" : (msg.Data.IsDir ? "folder" : "file");
 			$scope.file = msg.Data;
 			$scope.$digest();
 		}
@@ -65,13 +64,13 @@ angular.module("goapp.file", ["goapp.conn"])
 		replace: true,
 		controller: "FileCtrl",
 		template: [
-			'<div class="file" ng-show="file">',
-			'<div ng-bind-html-unsafe="fileHeader(file)"></div>',
-			'<div ng-show="file.Error">error: path {{file.Path}} {{file.Error}}</div>',
-			'<ul ng-show="file.IsDir"><li ng-repeat="child in file.Children">',
-			'<a href="#/file{{ file.Path }}/{{ child.Name }}"><i class="{{childIcon(child)}}"></i> {{child.Name}}</a>',
+			'<div class="file" ng-show="file" ng-switch="file.state">',
+			'<div ng-bind-html-unsafe="file.header"></div>',
+			'<div ng-switch-when="error">error: path {{file.Path}} {{file.Error}}</div>',
+			'<ul ng-switch-when="folder"><li ng-repeat="child in file.Children">',
+			'<a ng-href="#/file{{ file.Path }}/{{ child.Name }}"><i class="{{childIcon(child)}}"></i> {{child.Name}}</a>',
 			'</li></ul>',
-			'<div ng-show="!file.IsDir">editor here</div>',
+			'<div ng-switch-when="file">editor here</div>',
 			'</div>',
 		].join(""),
 	};

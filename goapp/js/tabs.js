@@ -62,9 +62,9 @@ angular.module("goapp.tabs", [])
 	return {
 		restrict: "EA",
 		template: [
-			'<ul><li ng-repeat="tab in tabs.list" ng-class="{active: tab.active}">',
-			'<a href="#{{ tab.path }}" ng-bind-html-unsafe="tab.name"></a>',
-			'<i class="icon-remove" ng-show="tab.close" ng-click="tabs.removeAt($index)"></i>',
+			'<ul><li ng-repeat="tab in tabs.list" ng-class="{active: tab.active}" ng-switch="tab.close">',
+			'<a ng-href="#{{ tab.path }}" ng-bind-html-unsafe="tab.name"></a>',
+			'<i class="icon-remove" ng-switch-when="true" ng-click="tabs.removeAt($index)"></i>',
 			'</li></ul>',
 		].join(""),
 	};

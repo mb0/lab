@@ -4,8 +4,8 @@
 
 angular.module("goapp", ["goapp.conn", "goapp.report", "goapp.file", "goapp.tabs"])
 .config(function($routeProvider, $logProvider) {
-	$routeProvider
-	.when("/about", {
+	$routeProvider.when("/about", {
+		controller: "TabCtrl",
 		template: [
 			'<pre>',
 			'<h3>golab</h3>'+
@@ -14,15 +14,6 @@ angular.module("goapp", ["goapp.conn", "goapp.report", "goapp.file", "goapp.tabs
 			'</pre>'
 		].join('\n'),
 	})
-	.when("/report", {
-		template: '<div id="report" report></div>',
-	})
-	.when("/file/*path", {
-		template: '<div file></div>',
-	})
-	.otherwise({
-		redirectTo: "/report",
-	});
 	$logProvider.debugEnabled(true);
 })
 .run(function(conn) {

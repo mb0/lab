@@ -3,6 +3,14 @@
 // license that can be found in the LICENSE file.
 
 angular.module("goapp.report", ["goapp.conn"])
+.config(function($routeProvider) {
+	$routeProvider.when("/report", {
+		controller: "TabCtrl",
+		template: '<div id="report" report></div>',
+	}).otherwise({
+		redirectTo: "/report",
+	});
+})
 .run(function($rootScope) {
 	var r = $rootScope.reports = {map:{}, list:[]};
 	function fix(report) {

@@ -1,40 +1,62 @@
-/*
-Copyright 2013 Martin Schnabel. All rights reserved.
-Use of this source code is governed by a BSD-style
-license that can be found in the LICENSE file.
-*/
+// Copyright 2013 Martin Schnabel. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 angular.module("goapp.tabs", [])
-.run(function($rootScope, $route, $location) {
-	var tabs = $rootScope.tabs = {list:[
+.controller("TabCtrl", function($scope, $route, $location) {
+	var tabs = $scope.tabs;
+	var path = $location.path();
+	if (tabs.activeTab) {
+		tabs.activeTab.active = false;
+		tabs.activeTab = null;
+	}
+	var tab = tabs.map[path];
+	if (!tab) {
+		tab = $route.current.factory(path);
+		tabs.map[path] = tab;
+		tabs.list.push(tab);
+	} else {
+		tabs.removeHistory(path);
+	}
+	tabs.history.push(path);
+	tab.active = true;
+	tabs.activeTab = tab;
+})
+.run(function($rootScope, $location) {
+	var tabs = $rootScope.tabs = {};
+	tabs.list = [
 		{path:"/about", name:'<i class="icon-beaker" title="about"></i>'},
 		{path:"/report", name:'<i class="icon-circle" title="report"></i>'},
-	], map:{}};
+	];
+	tabs.map = {};
 	for (var i=0; i < tabs.list.length; i++) {
 		var tab = tabs.list[i];
 		tabs.map[tab.path] = tab;
 	}
-	tabs.add = function(tab) {
-		if (!tabs.map[tab.path]) {
-			tabs.map[tab.path] = tab;
-			tabs.list.push(tab);
+	tabs.history = ["/report"];
+	tabs.removeHistory = function(path) {
+		for (var i=0; i < tabs.history.length; i++) {
+			if (tabs.history[i] == path) {
+				tabs.history.splice(i, 1);
+				break;
+			}
 		}
 	};
 	tabs.removeAt = function(idx) {
 		var tab = tabs.list[idx];
-		if (tab) {
-			delete tabs.map[tab.path];
-			tabs.list.splice(idx, 1);
+		if (!tab) {
+			return;
+		}
+		delete tabs.map[tab.path];
+		tabs.list.splice(idx, 1);
+		tabs.removeHistory(tab.path);
+		if (tab.active) {
+			tabs.activeTab = null;
+			if (tabs.history.length > 0) {
+				$location.path(tabs.history[tabs.history.length-1]);
+			}
 		}
 	};
-	$rootScope.$on("$routeChangeSuccess", function(e, cur){
-		if (tabs.activeTab) {
-			tabs.activeTab.active = false;
-		}
-		tabs.activeTab = tabs.map[$location.path()];
-		if (tabs.activeTab) {
-			tabs.activeTab.active = true;
-		}
-	});
 })
 .directive("tabs", function() {
 	return {

@@ -3,6 +3,22 @@
 // license that can be found in the LICENSE file.
 
 angular.module("goapp.file", ["goapp.conn"])
+.config(function($routeProvider) {
+	function shorten(path) {
+		var parts = path.split("/");
+		if (parts.length > 1) {
+			return parts[parts.length-2]+"/"+parts[parts.length-1];
+		}
+		return path;
+	}
+	$routeProvider.when("/file/*path", {
+		controller: "TabCtrl",
+		factory: function(path) {
+			return {path: path, name: shorten(path), close: true};
+		},
+		template: '<div file></div>',
+	});
+})
 .controller("FileCtrl", function($scope, $routeParams, $location, conn) {
 	var path = "/"+$routeParams.path, line = 0;
 	if (path[path.length-1] == "/") {
@@ -40,14 +56,6 @@ angular.module("goapp.file", ["goapp.conn"])
 			$scope.$digest();
 		}
 	});
-	function shorten(path) {
-		var parts = path.split("/");
-		if (parts.length > 1) {
-			return parts[parts.length-2]+"/"+parts[parts.length-1];
-		}
-		return path;
-	}
-	$scope.tabs.add({path: "/file"+path, name: shorten(path), close: true});
 	conn.send("stat", path);
 	$scope.$on("$destroy", dereg);
 })

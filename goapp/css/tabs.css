@@ -27,3 +27,10 @@ license that can be found in the LICENSE file.
 	text-decoration: none;
 	font-size: 120%;
 }
+#tabs .icon-remove {
+	color: #BBBBBB;
+	font-size: 12px;
+}
+#tabs .icon-remove:hover {
+	color: #222222;
+}

@@ -47,7 +47,7 @@ angular.module("goapp.file", ["goapp.conn"])
 		}
 		return path;
 	}
-	$scope.tabs.add("/file/*path", {link: "/file"+path, name: shorten(path), close: true});
+	$scope.tabs.add({path: "/file"+path, name: shorten(path), close: true});
 	conn.send("stat", path);
 	$scope.$on("$destroy", dereg);
 })

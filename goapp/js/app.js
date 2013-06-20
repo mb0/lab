@@ -13,15 +13,12 @@ angular.module("goapp", ["goapp.conn", "goapp.report", "goapp.file", "goapp.tabs
 			'<a href="https://raw.github.com/mb0/lab/master/LICENSE">BSD License</a>',
 			'</pre>'
 		].join('\n'),
-		tabs: {"/about": {name:'<i class="icon-beaker" title="about"></i>'}},
 	})
 	.when("/report", {
 		template: '<div id="report" report></div>',
-		tabs: {"/report": {name:'<i class="icon-circle" title="report"></i>'}},
 	})
 	.when("/file/*path", {
 		template: '<div file></div>',
-		tabs: {},
 	})
 	.otherwise({
 		redirectTo: "/report",

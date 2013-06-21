@@ -27,12 +27,6 @@ angular.module("goapp.file", ["goapp.conn"])
 	if ($location.hash().match(/^L\d+$/)) {
 		line = parseInt($location.hash().slice(1), 10);
 	}
-	$scope.childIcon = function(child) {
-		if (!child.IsDir) {
-			return 'icon-file-alt';
-		}
-		return 'icon-folder-close-alt';
-	};
 	function fileHeader(file) {
 		if (!file) return "";
 		var path = file.Path;
@@ -47,6 +41,16 @@ angular.module("goapp.file", ["goapp.conn"])
 		}
 		return result.join("");
 	}
+	$scope.openChild = function(c, e) {
+		if (e && e.button !== 1) {
+			var tab = $scope.tabs.get("/file"+path);
+			if (tab) {
+				tab.active = false;
+				$scope.tabs.remove(tab);
+			}
+		}
+		$location.path("/file"+ path +"/"+ c.Name);
+	};
 	var dereg = $scope.$on("conn.msg", function(e, msg) {
 		if ((msg.Head == "stat" || msg.Head == "stat.err") && msg.Data.Path == path) {
 			msg.Data.header = fileHeader(msg.Data);
@@ -58,6 +62,9 @@ angular.module("goapp.file", ["goapp.conn"])
 	conn.send("stat", path);
 	$scope.$on("$destroy", dereg);
 })
+.filter("fileIcon", function() {
+	return function(file) { return !file.IsDir ? "icon-file-alt" : "icon-folder-close-alt" };
+})
 .directive("file", function() {
 	return {
 		restrict: "AE",
@@ -65,10 +72,10 @@ angular.module("goapp.file", ["goapp.conn"])
 		controller: "FileCtrl",
 		template: [
 			'<div class="file" ng-show="file" ng-switch="file.state">',
-			'<div ng-bind-html-unsafe="file.header"></div>',
+			'<header ng-bind-html-unsafe="file.header"></header>',
 			'<div ng-switch-when="error">error: path {{file.Path}} {{file.Error}}</div>',
 			'<ul ng-switch-when="folder"><li ng-repeat="child in file.Children">',
-			'<a ng-href="#/file{{ file.Path }}/{{ child.Name }}"><i class="{{childIcon(child)}}"></i> {{child.Name}}</a>',
+			'<a href="" ng-click="openChild(child, $event)"><i class="{{ child|fileIcon }}"></i> {{child.Name}}</a>',
 			'</li></ul>',
 			'<div ng-switch-when="file">editor here</div>',
 			'</div>',

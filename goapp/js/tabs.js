@@ -42,11 +42,25 @@ angular.module("goapp.tabs", [])
 			}
 		}
 	};
-	tabs.removeAt = function(idx) {
-		var tab = tabs.list[idx];
-		if (!tab) {
-			return;
+	tabs.get = function(path) {
+		for (var i=0; i < tabs.list.length; i++) {
+			var tab = tabs.list[i];
+			if (tab.path == path) {
+				return tab;
+			}
 		}
+		return null;
+	};
+	tabs.remove = function(tab) {
+		if (!tab) return;
+		var idx = -1;
+		for (i=0; i < tabs.list.length; i++) {
+			if (tabs.list[i] == tab) {
+				idx = i;
+				break;
+			}
+		}
+		if (idx < 0) return;
 		delete tabs.map[tab.path];
 		tabs.list.splice(idx, 1);
 		tabs.removeHistory(tab.path);
@@ -64,7 +78,7 @@ angular.module("goapp.tabs", [])
 		template: [
 			'<ul><li ng-repeat="tab in tabs.list" ng-class="{active: tab.active}" ng-switch="tab.close">',
 			'<a ng-href="#{{ tab.path }}" ng-bind-html-unsafe="tab.name"></a>',
-			'<i class="icon-remove" ng-switch-when="true" ng-click="tabs.removeAt($index)"></i>',
+			'<i class="icon-remove" ng-switch-when="true" ng-click="tabs.remove(tab)"></i>',
 			'</li></ul>',
 		].join(""),
 	};

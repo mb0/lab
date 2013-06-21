@@ -23,7 +23,7 @@ license that can be found in the LICENSE file.
 #tabs .active a {
 	text-decoration: underline;
 }
-#tabs .active i {
+#tabs .active a i {
 	text-decoration: none;
 	font-size: 120%;
 }

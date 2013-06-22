@@ -15,12 +15,14 @@ import (
 func (mod *htmod) serveStatic() {
 	http.HandleFunc("/", index)
 	static := mod.findsrc("github.com/mb0/lab/golab/static")
+	statng := mod.findsrc("github.com/mb0/lab/goapp")
 	statace := mod.findsrc("github.com/mb0/ace/lib/ace")
-	if static == "" || statace == "" {
+	if static == "" || statace == "" || statng == "" {
 		indexbytes = []byte("cannot find client files.")
 		return
 	}
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(static))))
+	http.Handle("/ng/", http.StripPrefix("/ng/", http.FileServer(http.Dir(statng))))
 	http.Handle("/static/ace/", http.StripPrefix("/static/ace/", http.FileServer(http.Dir(statace))))
 	http.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/cache-manifest; charset=utf-8")

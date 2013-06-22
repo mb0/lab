@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+define(["angular"], function(goapp) {
+
 angular.module("goapp.tabs", [])
 .controller("TabCtrl", function($scope, $route, $location) {
 	var tabs = $scope.tabs;
@@ -82,4 +84,5 @@ angular.module("goapp.tabs", [])
 			'</li></ul>',
 		].join(""),
 	};
+});
 });

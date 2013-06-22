@@ -5,19 +5,14 @@
 	<title>golab</title>
 	<link type="image/png" rel="icon" href="golab.png">
 	<link type="text/css" rel="stylesheet" href="http://netdna.bootstrapcdn.com/font-awesome/3.2.0/css/font-awesome.css">
-	<link type="text/css" rel="stylesheet" href="css/app.css">
-	<link type="text/css" rel="stylesheet" href="css/report.css">
-	<link type="text/css" rel="stylesheet" href="css/file.css">
-	<link type="text/css" rel="stylesheet" href="css/tabs.css">
-	<script src="http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.1.5/angular.js"></script>
-	<script src="js/report.js"></script>
-	<script src="js/file.js"></script>
-	<script src="js/conn.js"></script>
-	<script src="js/tabs.js"></script>
-	<script src="js/app.js"></script>
+	<link type="text/css" rel="stylesheet" href="/ng/css/app.css">
+	<link type="text/css" rel="stylesheet" href="/ng/css/tabs.css">
+	<link type="text/css" rel="stylesheet" href="/ng/css/report.css">
+	<link type="text/css" rel="stylesheet" href="/ng/css/file.css">
 </head>
 <body>
 <div id="tabs" tabs></div>
 <div id="view" ng-view></div>
+<script data-main="/ng/js/app" src="http://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.4/require.min.js"></script>
 </body>
 </html>

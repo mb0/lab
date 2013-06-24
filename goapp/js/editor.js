@@ -81,7 +81,8 @@ angular.module("goapp.editor", ["goapp.conn"])
 	$scope.docs.subscribe($scope.file.Id, $scope.file.Path, function(doc){
 		$scope.doc = doc;
 		var renderer = acecfg.createRenderer(el);
-		var session = acecfg.createSession(doc.Ace, "ace/mode/text");
+		var mode = acecfg.getMode(doc.Path);
+		var session = acecfg.createSession(doc.Ace, mode.path);
 		editor = acecfg.createEditor(renderer, session, true);
 	});
 	$scope.$on("conn.msg", function(e, msg) {

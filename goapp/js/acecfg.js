@@ -47,9 +47,49 @@ function createEditor(renderer, session, multi) {
 	return e;
 }
 
+function createModes(map) {
+	var modes = {};
+	for (var key in map) {
+		var mode = {name: key, path: "ace/mode/"+ key};
+		mode.regex = new RegExp("^.*\\.(" + map[key] + ")$");
+		modes[key] = mode;
+	}
+	return modes;
+}
+
+var modes = createModes({
+	css: "css",
+	golang: "go",
+	html: "htm|html|xhtml",
+	javascript: "js",
+	json: "json",
+	markdown: "md|markdown",
+	text: "txt",
+	xml: "xml|rdf|rss|wsdl|xslt|atom|mathml|mml|xul|xbl",
+	c_cpp: "c|cc|cpp|cxx|h|hh|hpp",
+	diff: "diff|patch",
+	sql: "sql",
+	svg: "svg",
+	tcl: "tcl",
+	toml: "toml",
+	yaml: "yaml",
+});
+
+function getMode(path) {
+	for (var key in modes) {
+		var mode = modes[key];
+		if (path.match(mode.regex)) {
+			return mode;
+		}
+	}
+	return modes.text;
+}
+
 return {
 	createRenderer: createRenderer,
 	createSession:  createSession,
 	createEditor:   createEditor,
+	modes: modes,
+	getMode: getMode,
 };
 });

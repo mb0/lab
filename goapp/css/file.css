@@ -23,3 +23,10 @@ license that can be found in the LICENSE file.
 	top:2em; left:0; right:0; bottom: 0;
 	overflow: auto;
 }
+.file .ace_editor {
+	position: absolute;
+	top:2em; left:0; right:0; bottom: 0;
+	line-height: 1.333em;
+	text-shadow: none;
+	font-size: 14px;
+}

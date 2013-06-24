@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-define(["angular", "conn"], function(goapp) {
+define(["angular", "conn", "editor"], function(goapp) {
 
-angular.module("goapp.file", ["goapp.conn"])
+angular.module("goapp.file", ["goapp.conn", "goapp.editor"])
 .config(function($routeProvider) {
 	function shorten(path) {
 		var parts = path.split("/");
@@ -79,7 +79,7 @@ angular.module("goapp.file", ["goapp.conn"])
 			'<ul ng-switch-when="folder"><li ng-repeat="child in file.Children">',
 			'<a href="" ng-click="openChild(child, $event)"><i class="{{ child|fileIcon }}"></i> {{child.Name}}</a>',
 			'</li></ul>',
-			'<div ng-switch-when="file">editor here</div>',
+			'<div ng-switch-when="file" editor></div>',
 			'</div>',
 		].join(""),
 	};

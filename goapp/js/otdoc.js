@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-define(["ot", "ace/range", "ace/document"], function(ot, range, document) {
+define(["ot", "acecfg", "ace/range", "ace/edit_session"], function(ot, acecfg, range, edit_session) {
 
 function utf8OffsetToPos(lines, off, startrow) {
 	if (!startrow) {
@@ -111,13 +111,15 @@ function applyOps(acedoc, ops) {
 }
 
 var Doc = function(id, path) {
-	this.Id = id;
-	this.Path = path;
-	this.Rev = -1;
-	this.Status = "subscribe";
-	this.Ace = new document.Document("");
-	this.User = null;
+	this.id = id;
+	this.path = path;
+	this.rev = -1;
+	this.user = null;
+	this.status = "subscribe";
 	
+	this.session = acecfg.createSession("", acecfg.getMode(path));
+	this.document = this.session.getDocument();
+
 	this.wait = null;
 	this.buf = null;
 	this.merge = false;
@@ -134,37 +136,37 @@ Doc.prototype = {
 			ops = res[0], this.buf = res[1];
 		}
 		this.merge = true;
-		applyOps(this.Ace, ops);
+		applyOps(this.document, ops);
 		this.merge = false;
-		this.Rev++;
-		this.Status = "received";
+		this.rev++;
+		this.status = "received";
 	},
 	ackOps: function(ops) {
 		if (this.buf !== null) {
 			this.wait = this.buf;
 			this.buf = null;
-			this.Rev++;
-			this.Status = "waiting";
-			this.Ace._emit("ops", {otdoc: this, ops: this.wait});
+			this.rev++;
+			this.status = "waiting";
+			this.document._emit("ops", {ops: this.wait});
 		} else if (this.wait !== null) {
 			this.wait = null;
-			this.Rev++;
-			this.Status = "";
+			this.rev++;
+			this.status = "";
 		} else {
 			throw new Error("no pending operation");
 		}
 	},
 	init: function(rev, user, text) {
-		this.Status = "";
-		this.Rev = rev;
-		this.User = user;
-		this.Ace.setValue(text);
+		this.status = "";
+		this.rev = rev;
+		this.user = user;
+		this.document.setValue(text);
 		var doc = this;
-		this.Ace.on("change", function(e) {
+		this.document.on("change", function(e) {
 			if (doc.merge === true) {
 				return;
 			}
-			var ops = deltaToOps(doc.Ace.$lines || doc.Ace.getAllLines(), e.data);
+			var ops = deltaToOps(doc.document.$lines || doc.document.getAllLines(), e.data);
 			if (!ops) {
 				return;
 			}
@@ -178,11 +180,11 @@ Doc.prototype = {
 				doc.buf = ops;
 			} else {
 				doc.wait = ops;
-				doc.Status = "waiting";
-				doc.Ace._emit("ops", {otdoc: doc, ops: doc.wait});
+				doc.status = "waiting";
+				doc.document._emit("ops", {ops: doc.wait});
 			}
 		});
-		this.Ace._emit("init", {otdoc: doc});
+		this.document._emit("init", {});
 	},
 };
 

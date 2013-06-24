@@ -4,6 +4,12 @@
 
 define(["angular", "otdoc", "acecfg", "conn"], function(angular, otdoc, acecfg) {
 	
+var emptySession = acecfg.createSession("", acecfg.modes.text.path);
+
+var el = document.createElement("div");
+var renderer = acecfg.createRenderer(el);
+var editor = acecfg.createEditor(renderer, emptySession, true);
+
 angular.module("goapp.editor", ["goapp.conn"])
 .run(function($rootScope, conn) {
 	var docs = $rootScope.docs = {
@@ -14,14 +20,15 @@ angular.module("goapp.editor", ["goapp.conn"])
 		if (doc !== undefined) {
 			console.log("known document", path);
 			handler(doc);
+			return;
 		}
 		doc = new otdoc.Doc(id, path);
 		docs.map[id] = doc;
 		var listener = function() {
-			doc.Ace.removeListener("init", listener);
+			doc.document.removeListener("init", listener);
 			handler(doc);
 		};
-		doc.Ace.on("init", listener);
+		doc.document.on("init", listener);
 		conn.send("subscribe", {Id: id});
 	};
 	$rootScope.$on("conn.msg", function(e, msg) {
@@ -34,8 +41,8 @@ angular.module("goapp.editor", ["goapp.conn"])
 			}
 			var text = msg.Data.Ops && msg.Data.Ops[0] || "";
 			doc.init(msg.Data.Rev, msg.Data.User, text);
-			doc.Ace.on("ops", function(e) {
-				conn.send("revise", {Id: doc.Id, Rev: doc.Rev, Ops: e.ops});
+			doc.document.on("ops", function(e) {
+				conn.send("revise", {Id: doc.id, Rev: doc.rev, Ops: e.ops});
 			});
 		} else if (msg.Head == "revise") {
 			doc = docs.map[msg.Data.Id];
@@ -44,7 +51,7 @@ angular.module("goapp.editor", ["goapp.conn"])
 				return;
 			}
 			try {
-				if (doc.User === msg.Data.User) {
+				if (doc.user === msg.Data.User) {
 					doc.ackOps(msg.Data.Ops);
 				} else {
 					doc.recvOps(msg.Data.Ops);
@@ -62,7 +69,7 @@ angular.module("goapp.editor", ["goapp.conn"])
 				console.log("publish unknown document", msg.Data);
 				return;
 			}
-			doc.Status = "published";
+			doc.status = "published";
 		} else if (msg.Head == "unsubscribe") {
 			doc = docs.map[msg.Data.Id];
 			if (!doc) {
@@ -74,22 +81,19 @@ angular.module("goapp.editor", ["goapp.conn"])
 	});
 })
 .controller("EditorCtrl", function($scope, $element, conn) {
-	// TODO subscribe to document and listen for changes
-	var editor = null;
-	var el = document.createElement("div");
 	$element.append(el);
 	$scope.docs.subscribe($scope.file.Id, $scope.file.Path, function(doc){
-		$scope.doc = doc;
-		var renderer = acecfg.createRenderer(el);
-		var mode = acecfg.getMode(doc.Path);
-		var session = acecfg.createSession(doc.Ace, mode.path);
-		editor = acecfg.createEditor(renderer, session, true);
+		editor.setSession(doc.session);
+		editor.focus();
 	});
 	$scope.$on("conn.msg", function(e, msg) {
-		if (msg.Head == "complete" && msg.Data.Id === $scope.doc.Id) {
+		if (msg.Head == "complete" && msg.Data.Id === $scope.doc.id) {
 			// TODO show completion popup
 			console.log("complete");
 		}
+	});
+	$scope.$on("$$destory", function() {
+		editor.setSession(emptySession);
 	});
 })
 .directive("editor", function() {

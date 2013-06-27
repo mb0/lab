@@ -35,7 +35,15 @@ var Doc = sotdoc.Doc.extend({
 		var lines = acedoc.$lines || acedoc.getAllLines();
 		var idxr = sotdoc.posToRestIndex(lines, cursor);
 		conn.send("complete", {Id: this.get("Id"), Offs: idxr.start});
-	}
+	},
+	subscribe: function(handler) {
+		if (this.get("Status") == "subscribe") {
+			this.once("change:Ace", handler);
+			conn.send("subscribe", {Id: this.id});
+		} else {
+			handler();
+		}
+	},
 });
 
 var Docs = Backbone.Collection.extend({model:Doc});
@@ -119,10 +127,12 @@ var docs = new Docs();
 var view = new DocsView({collection:docs});
 return {
 	view: view,
-	subscribe: function(id, path) {
-		var doc = new Doc({Id: id, Path: path, Rev: -1, Status: "subscribe"});
-		docs.add(doc);
-		conn.send("subscribe", {Id: id});
+	getOrCreate: function(id, path) {
+		var doc = docs.get(id);
+		if (!doc) {
+			doc = new Doc({Id: id, Path: path, Rev: -1, Status: "subscribe"});
+			docs.add(doc);
+		}
 		return doc;
 	},
 };

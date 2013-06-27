@@ -59,16 +59,19 @@ var EditorView = Backbone.View.extend({
 		this.$el.html(this.template(this.model));
 		this.$editor = $('<div class="content">').appendTo(this.$el);
 		this.editor = null;
-		this.doc = docs.subscribe(this.model.id, this.model.getPath());
+		this.doc = docs.getOrCreate(this.model.id, this.model.getPath());
 		this.listenTo(conn, "msg:complete", this.onMsgComplete);
-		this.listenTo(this.doc, "change:Ace", this.onChangeAce);
 		this.listenTo(this.model, "remove", this.remove);
+		var tis = this;
+		this.doc.subscribe(function() {
+			tis.onDocInit();
+		});
 	},
 	render: function() {
 		this.$("> header").replaceWith(this.template(this.model));
 		return this;
 	},
-	onChangeAce: function() {
+	onDocInit: function() {
 		var mode = modes.matchPath(this.model.getPath());
 		var renderer = ace.createRenderer(this.$editor.get(0));
 		var session = ace.createSession(this.doc.get("Ace"), mode.get("mode"));

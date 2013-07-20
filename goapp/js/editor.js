@@ -82,18 +82,46 @@ angular.module("goapp.editor", ["goapp.conn"])
 })
 .controller("EditorCtrl", function($scope, $element, conn) {
 	$element.append(el);
-	$scope.docs.subscribe($scope.file.Id, $scope.file.Path, function(doc){
+	var id = $scope.file.Id;
+	$scope.docs.subscribe(id, $scope.file.Path, function(doc){
 		editor.setSession(doc.session);
+		editor.commands.addCommand({
+			name: "save", readOnly: false,
+			exec: function() {
+				conn.send("publish", {Id: doc.id});
+			},
+			bindKey: {win: "Ctrl-S", mac:"Command-S"},
+		});
+		if (doc.mode.name == "golang") {
+			editor.commands.addCommand({
+				name: "format", readOnly: false,
+				exec: function() {
+					conn.send("format", {Id: doc.id});
+				},
+				bindKey: {win: "Ctrl-Shift-F", mac:"Command-Shift-F"},
+			});
+			editor.commands.addCommand({
+				name: "complete", readOnly: false,
+				exec: function(editor) {
+					var lines = doc.document.$lines || doc.document.getAllLines();
+					var idx = otdoc.posToRestIndex(lines, editor.selection.getCursor());
+					conn.send("complete", {Id: doc.id, Offs: idx.start});
+				},
+				bindKey: {win: "Ctrl-Space", mac:"Command-Space"},
+			});
+		}
 		editor.focus();
 	});
-	$scope.$on("conn.msg", function(e, msg) {
-		if (msg.Head == "complete" && msg.Data.Id === $scope.doc.id) {
+	var dereg = $scope.$on("conn.msg", function(e, msg) {
+		if (msg.Head == "complete" && msg.Data.Id === id) {
 			// TODO show completion popup
 			console.log("complete");
 		}
 	});
-	$scope.$on("$$destory", function() {
+	$scope.$on("$destroy", function() {
+		dereg();
 		editor.setSession(emptySession);
+		editor.commands.removeCommands(["save", "format", "complete"]);
 	});
 })
 .directive("editor", function() {

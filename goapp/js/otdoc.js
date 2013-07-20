@@ -117,7 +117,8 @@ var Doc = function(id, path) {
 	this.user = null;
 	this.status = "subscribe";
 	
-	this.session = acecfg.createSession("", acecfg.getMode(path));
+	this.mode = acecfg.getMode(path);
+	this.session = acecfg.createSession("", this.mode);
 	this.document = this.session.getDocument();
 
 	this.wait = null;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-define(["angular", "otdoc", "acecfg", "conn"], function(angular, otdoc, acecfg) {
+define(["angular", "otdoc", "acecfg", "completion", "conn"], function(angular, otdoc, acecfg, completion) {
 	
 var emptySession = acecfg.createSession("", acecfg.modes.text.path);
 
@@ -114,8 +114,7 @@ angular.module("goapp.editor", ["goapp.conn"])
 	});
 	var dereg = $scope.$on("conn.msg", function(e, msg) {
 		if (msg.Head == "complete" && msg.Data.Id === id) {
-			// TODO show completion popup
-			console.log("complete");
+			completion.show(editor, msg.Data);
 		}
 	});
 	$scope.$on("$destroy", function() {

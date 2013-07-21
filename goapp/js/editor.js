@@ -18,7 +18,6 @@ angular.module("goapp.editor", ["goapp.conn"])
 	docs.subscribe = function(id, path, handler) {
 		var doc = docs.map[id];
 		if (doc !== undefined) {
-			console.log("known document", path);
 			handler(doc);
 			return;
 		}
@@ -77,13 +76,17 @@ angular.module("goapp.editor", ["goapp.conn"])
 				return;
 			}
 			delete docs.map[msg.Data.Id];
+		} else {
+			return;
 		}
+		$rootScope.$digest();
 	});
 })
 .controller("EditorCtrl", function($scope, $element, conn) {
 	$element.append(el);
-	var id = $scope.file.Id;
-	$scope.docs.subscribe(id, $scope.file.Path, function(doc){
+	var id = $scope.file.Id, path = $scope.file.Path;
+	var deregWatch = null;
+	$scope.docs.subscribe(id, path, function(doc) {
 		editor.setSession(doc.session);
 		editor.commands.addCommand({
 			name: "save", readOnly: false,
@@ -111,6 +114,11 @@ angular.module("goapp.editor", ["goapp.conn"])
 			});
 		}
 		editor.focus();
+		deregWatch = $scope.$watch(function(s) {
+			return s.markers[path];
+		}, function(markers) {
+			doc.session.setAnnotations(markers);
+		});
 	});
 	var dereg = $scope.$on("conn.msg", function(e, msg) {
 		if (msg.Head == "complete" && msg.Data.Id === id) {
@@ -119,6 +127,10 @@ angular.module("goapp.editor", ["goapp.conn"])
 	});
 	$scope.$on("$destroy", function() {
 		dereg();
+		if (deregWatch !== null) {
+			deregWatch();
+		}
+		editor.getSession().setAnnotations(null);
 		editor.setSession(emptySession);
 		editor.commands.removeCommands(["save", "format", "complete"]);
 	});

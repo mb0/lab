@@ -22,7 +22,7 @@ license that can be found in the LICENSE file.
 }
 .report .status i {
 	float: right;
-	padding: 7px;
+	padding: 7px 4px;
 	font-size: 10px;
 	cursor: pointer;
 }

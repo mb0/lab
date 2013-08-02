@@ -5,12 +5,14 @@
 define(["angular", "conn"], function(goapp) {
 
 var errorPattern = /^((\/(?:[^\/\s]+\/)+)?(\S+?\.go))\:(\d+)\:(?:(\d+)\:)?(.*)$/;
+var filePathsPattern = /(\/([^\/\s]+\/)+(\S+?\.go))\:(\d+)(?:\:(\d+))?\:/g;
+var fileNamesPattern = /\n(([\w_]+\.go)\:(\d+)(?:\:\d+)?\:)/g;
 
 function prepare(report, markers) {
 	report.Res = report.Test.Result || report.Src.Result;
 	report.Status = report.Res.Err ? "fail" : "ok";
 	var out = (report.Res.Stdout || "") + (report.Res.Stderr || "");
-	// parse error markers
+	// collect file names
 	var i, files = [], markermap = {};
 	if (report.Src && report.Src.Info) {
 		files = files.concat(report.Src.Info.Files);
@@ -22,6 +24,7 @@ function prepare(report, markers) {
 		markermap[report.Dir+"/"+files[i].Name] = [];
 	}
 	if (report.Res.Err) {
+		// parse error markers
 		var lines = out.split("\n");
 		for (i=0; i < lines.length; i++) {
 			var match = lines[i].match(errorPattern);
@@ -44,8 +47,8 @@ function prepare(report, markers) {
 		markers[i] = markermap[i];
 	}
 	// add html links to file paths to the output
-	out = out.replace(/(\/([^\/\s]+\/)+(\S+?\.go))\:(\d+)(?:\:(\d+))?\:/g, '<a href="#/file$1#L$4">$2$3:$4</a>');
-	out = out.replace(/\n(([\w_]+\.go)\:(\d+)(?:\:\d+)?\:)/g, '\n<a href="#/file' + report.Dir + '/$2#L$3">$1</a>');
+	out = out.replace(filePathsPattern, '<a href="#/file$1#L$4">$2$3:$4</a>');
+	out = out.replace(fileNamesPattern, '\n<a href="#/file' + report.Dir + '/$2#L$3">$1</a>');
 	report.Output = out.replace(/(^(#.*|\S)\n|\n#[^\n]*)/g, "");
 }
 
@@ -59,6 +62,7 @@ angular.module("goapp.report", ["goapp.conn"])
 	});
 })
 .run(function($rootScope) {
+	var tab = $rootScope.tabs.get("/report");
 	var r = $rootScope.reports = {map:{}, list:[]};
 	var m = $rootScope.markers = {};
 	function add(reports) {
@@ -71,8 +75,11 @@ angular.module("goapp.report", ["goapp.conn"])
 			r.map[report.Id] = report;
 		}
 		r.list.length = 0;
+		tab.error = false;
 		for (id in r.map) {
-			r.list.push(r.map[id]);
+			report = r.map[id];
+			tab.error = tab.error || report.Res.Err;
+			r.list.push(report);
 		}
 		$rootScope.$digest();
 	}

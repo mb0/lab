@@ -6,29 +6,13 @@ define(["angular"], function(goapp) {
 
 angular.module("goapp.tabs", [])
 .controller("TabCtrl", function($scope, $route, $location) {
-	var tabs = $scope.tabs;
-	var path = $location.path();
-	if (tabs.activeTab) {
-		tabs.activeTab.active = false;
-		tabs.activeTab = null;
-	}
-	var tab = tabs.map[path];
-	if (!tab) {
-		tab = $route.current.factory(path);
-		tabs.map[path] = tab;
-		tabs.list.push(tab);
-	} else {
-		tabs.removeHistory(path);
-	}
-	tabs.history.push(path);
-	tab.active = true;
-	tabs.activeTab = tab;
+	$scope.tabs.activate($location.path(), $route.current);
 })
 .run(function($rootScope, $location) {
 	var tabs = $rootScope.tabs = {};
 	tabs.list = [
 		{path:"/about", name:'<i class="icon-beaker" title="about"></i>'},
-		{path:"/report", name:'<i class="icon-circle" title="report"></i>'},
+		{path:"/report", name:'<i class="icon-circle report" title="report"></i>'},
 	];
 	tabs.map = {};
 	for (var i=0; i < tabs.list.length; i++) {
@@ -43,6 +27,27 @@ angular.module("goapp.tabs", [])
 				break;
 			}
 		}
+	};
+	tabs.add = function(path, route) {
+		var tab = route.factory(path);
+		tabs.map[path] = tab;
+		tabs.list.push(tab);
+		return tab;
+	};
+	tabs.activate = function(path, route) {
+		if (tabs.activeTab) {
+			tabs.activeTab.active = false;
+			tabs.activeTab = null;
+		}
+		var tab = tabs.map[path];
+		if (!tab) {
+			tab = tabs.add(path, route);
+		} else {
+			tabs.removeHistory(path);
+		}
+		tabs.history.push(path);
+		tab.active = true;
+		tabs.activeTab = tab;
 	};
 	tabs.get = function(path) {
 		for (var i=0; i < tabs.list.length; i++) {
@@ -78,7 +83,7 @@ angular.module("goapp.tabs", [])
 	return {
 		restrict: "EA",
 		template: [
-			'<ul><li ng-repeat="tab in tabs.list" ng-class="{active: tab.active}" ng-switch="tab.close">',
+			'<ul><li ng-repeat="tab in tabs.list" ng-class="{active: tab.active, error: tab.error}" ng-switch="tab.close">',
 			'<a ng-href="#{{ tab.path }}" ng-bind-html-unsafe="tab.name"></a>',
 			'<i class="icon-remove" ng-switch-when="true" ng-click="tabs.remove(tab)"></i>',
 			'</li></ul>',

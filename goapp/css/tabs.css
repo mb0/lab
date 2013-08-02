@@ -27,6 +27,12 @@ license that can be found in the LICENSE file.
 	text-decoration: none;
 	font-size: 120%;
 }
+#tabs .report {
+	color: #426842;
+}
+#tabs .error .report {
+	color: #684242;
+}
 #tabs .icon-remove {
 	color: #BBBBBB;
 	font-size: 12px;

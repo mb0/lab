@@ -27,3 +27,6 @@ a { text-decoration: none; cursor: pointer;}
 #view a {
 	color: #CFAEA9;
 }
+.about {
+	padding: 0 15px;
+}

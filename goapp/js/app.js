@@ -19,7 +19,7 @@ angular.module("goapp", ["goapp.conn", "goapp.tabs", "goapp.report", "goapp.file
 	$routeProvider.when("/about", {
 		controller: "TabCtrl",
 		template: [
-			'<pre>',
+			'<pre class="about">',
 			'<h3>golab</h3>'+
 			'<a href="https://github.com/mb0/lab">github.com/mb0/lab</a> (c) Martin Schnabel '+
 			'<a href="https://raw.github.com/mb0/lab/master/LICENSE">BSD License</a>',

@@ -5,6 +5,10 @@
 package htmod
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
+	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -15,7 +19,7 @@ import (
 )
 
 type htmod struct {
-	addr  string
+	conf  Config
 	roots []string
 	ws    *ws.Ws
 	src   *gosrc.Src
@@ -23,8 +27,16 @@ type htmod struct {
 	*hub.Hub
 }
 
-func New(addr string) *htmod {
-	return &htmod{addr: addr}
+type Config struct {
+	Https    bool
+	Addr     string
+	KeyFile  string
+	CertFile string
+	CAFile   string
+}
+
+func New(conf Config) *htmod {
+	return &htmod{conf: conf}
 }
 
 func (mod *htmod) Init() {
@@ -52,7 +64,32 @@ func (mod *htmod) Run() {
 		mod.SendMsg(m, hub.Group)
 	})
 	http.Handle("/ws", mod.Hub)
-	err := http.ListenAndServe(mod.addr, nil)
+	var err error
+	server := &http.Server{
+		Addr: mod.conf.Addr,
+	}
+	if mod.conf.Https {
+		if mod.conf.CAFile != "" {
+			pemByte, err := ioutil.ReadFile(mod.conf.CAFile)
+			if err != nil {
+				log.Fatalf("reading ca file:\n\t%s\n", err)
+			}
+			block, _ := pem.Decode(pemByte)
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				log.Fatalf("parsing ca file:\n\t%s\n", err)
+			}
+			pool := x509.NewCertPool()
+			pool.AddCert(cert)
+			server.TLSConfig = &tls.Config{
+				ClientAuth: tls.RequireAndVerifyClientCert,
+				ClientCAs:  pool,
+			}
+		}
+		err = server.ListenAndServeTLS(mod.conf.CertFile, mod.conf.KeyFile)
+	} else {
+		err = server.ListenAndServe()
+	}
 	if err != nil {
 		log.Fatalf("http %s\n", err)
 	}

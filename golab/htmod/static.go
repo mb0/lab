@@ -58,6 +58,6 @@ var indexbytes = []byte(`<!DOCTYPE html>
 	<link href="/static/main.css" rel="stylesheet">
 </head><body>
 	<div id="app"></div>
-	<script data-main="/static/main" src="http://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.4/require.min.js"></script>
+	<script data-main="/static/main" src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.4/require.min.js"></script>
 </body></html>
 `)

@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Command golab starts either a CLI for build and test reports
+// or a webinterface with reports and collaborative editing support.
+//
+// The package is created in a way that it can be built without
+// the webinterface by deleting or leaving out the http.go file.
 package main
 
 import (

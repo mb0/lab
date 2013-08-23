@@ -1,12 +1,12 @@
 CACHE MANIFEST
-http://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.4/require.min.js
-http://cdnjs.cloudflare.com/ajax/libs/json2/20121008/json2.min.js
-http://cdnjs.cloudflare.com/ajax/libs/zepto/1.0rc1/zepto.min.js
-http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js
-http://cdnjs.cloudflare.com/ajax/libs/backbone.js/0.9.10/backbone-min.js
-http://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.0.2/css/font-awesome.min.css
-http://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.0.2/font/fontawesome-webfont.eot
-http://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.0.2/font/fontawesome-webfont.woff
-http://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.0.2/font/fontawesome-webfont.ttf
+//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.4/require.min.js
+//cdnjs.cloudflare.com/ajax/libs/json2/20121008/json2.min.js
+//cdnjs.cloudflare.com/ajax/libs/zepto/1.0rc1/zepto.min.js
+//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js
+//cdnjs.cloudflare.com/ajax/libs/backbone.js/0.9.10/backbone-min.js
+//cdnjs.cloudflare.com/ajax/libs/font-awesome/3.0.2/css/font-awesome.min.css
+//cdnjs.cloudflare.com/ajax/libs/font-awesome/3.0.2/font/fontawesome-webfont.eot
+//cdnjs.cloudflare.com/ajax/libs/font-awesome/3.0.2/font/fontawesome-webfont.woff
+//cdnjs.cloudflare.com/ajax/libs/font-awesome/3.0.2/font/fontawesome-webfont.ttf
 NETWORK:
 *

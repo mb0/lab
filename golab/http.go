@@ -15,14 +15,30 @@ import (
 )
 
 var (
-	htstart = flag.Bool("http", false, "start http server")
-	htaddr  = flag.String("addr", "localhost:8910", "http server addr")
+	htaddr     = flag.String("addr", "localhost:8910", "http server addr")
+	useHttp    = flag.Bool("http", false, "start http server")
+	useHttps   = flag.Bool("https", false, "start https server")
+	keyFile    = flag.String("key", "", "key file  for ssl")
+	certFile   = flag.String("cert", "", "cert file for ssl")
+	cacertFile = flag.String("cacert", "", "client ca cert file for authentication")
 )
 
 func init() {
 	flag.Parse()
-	if *htstart {
-		log.Printf("starting http://%s/\n", *htaddr)
-		lab.Register("htmod", htmod.New(*htaddr))
+	if !(*useHttp || *useHttps) {
+		return
 	}
+	conf := htmod.Config{
+		Https: *useHttps,
+		Addr:  *htaddr,
+	}
+	if conf.Https {
+		conf.KeyFile = *keyFile
+		conf.CertFile = *certFile
+		conf.CAFile = *cacertFile
+		log.Printf("starting https://%s/\n", conf.Addr)
+	} else {
+		log.Printf("starting http://%s/\n", conf.Addr)
+	}
+	lab.Register("htmod", htmod.New(conf))
 }

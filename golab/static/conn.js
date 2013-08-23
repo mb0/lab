@@ -24,7 +24,11 @@ Conn.prototype = {
 	connect: function() {
 		var c = this;
 		if (!c.wsurl) {
-			c.wsurl = "ws://"+ location.host +"/ws";
+			var proto = "ws:";
+			if (location.protocol == "https:") {
+				proto = "wss:";
+			}
+			c.wsurl = proto +"//"+ location.host +"/ws";
 		}
 		c.log("connect", c.wsurl);
 		c.trigger("connect", c.wsurl);

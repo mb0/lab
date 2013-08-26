@@ -1,0 +1,32 @@
+# openssl config file for golab.
+
+HOME                   = .
+RANDFILE               = $ENV::HOME/.rnd
+
+[ req ]
+default_days           = 365
+distinguished_name     = req_distinguished_name
+string_mask            = utf8only
+
+[ req_distinguished_name ]
+countryName            = country code (2 letters)
+countryName_min        = 2
+countryName_max        = 2
+0.organizationName     = organization
+
+[ v3_ca ]
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints       = CA:TRUE
+
+[ v3_srv ]
+basicConstraints       = CA:FALSE
+keyUsage               = digitalSignature, keyEncipherment
+extendedKeyUsage       = serverAuth
+subjectAltName         = IP:127.0.0.1,DNS:localhost
+
+[ v3_cli ]
+basicConstraints       = CA:FALSE
+keyUsage               = digitalSignature, keyEncipherment
+extendedKeyUsage       = clientAuth
+

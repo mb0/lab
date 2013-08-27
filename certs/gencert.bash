@@ -3,7 +3,10 @@
 cdir=$( cd "$( dirname "$0" )" && pwd )
 conf="$cdir/openssl.cnf"
 
-out='.'
+home=$( getent passwd "$USER" | cut -d: -f6 )
+out="$home/.golab"
+mkdir -p $out || exit 1
+
 ca="$out/ca"
 serial="$out/serial"
 

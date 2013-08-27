@@ -6,7 +6,7 @@ license that can be found in the LICENSE file.
 #completion-popup {
 	z-index: 808080;
 	position: fixed;
-	width: 300px; height: 150px;
+	width: 400px; height: 200px;
 	background-color: white;
 	cursor: default;
 	overflow: hidden;

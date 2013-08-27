@@ -171,7 +171,7 @@ var Popup = Backbone.View.extend({
 		var at = this.editor.selection.getCursor();
 		this.at = _.clone(at);
 		var prefix = this.prefix(at);
-		at.column -= prefix;
+		at.column -= prefix.length;
 		this.reposition(at, props.length);
 		this.proposals.reset(props);
 	},
@@ -190,7 +190,7 @@ var Popup = Backbone.View.extend({
 			this.el.style.bottom = '';
 		}
 		// clip scrollbar
-		this.$list.width(count > 6 ? 300 : 320);
+		this.$list.width(1000);
 		this.el.style.height = (h&-1)+'px';
 		this.el.style.left = pos.left+'px';
 	}

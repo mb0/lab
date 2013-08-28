@@ -10,7 +10,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"go/build"
 	"os"
@@ -29,7 +28,7 @@ type golab struct {
 }
 
 func main() {
-	flag.Parse()
+	lab.LoadConf()
 	roots := build.Default.SrcDirs()
 	lab.Register("roots", roots)
 	lab.Register("gosrc", gosrc.New())

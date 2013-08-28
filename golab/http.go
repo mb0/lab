@@ -5,7 +5,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 	_ "net/http/pprof"
 
@@ -15,16 +14,16 @@ import (
 )
 
 var (
-	htaddr     = flag.String("addr", "localhost:8910", "http server addr")
-	useHttp    = flag.Bool("http", false, "start http server")
-	useHttps   = flag.Bool("https", false, "start https server")
-	keyFile    = flag.String("key", "", "key file  for ssl")
-	certFile   = flag.String("cert", "", "cert file for ssl")
-	cacertFile = flag.String("cacert", "", "client ca cert file for authentication")
+	htaddr     = lab.Conf.String("addr", "localhost:8910", "http server addr")
+	useHttp    = lab.Conf.Bool("http", false, "start http server")
+	useHttps   = lab.Conf.Bool("https", false, "start https server")
+	keyFile    = lab.Conf.String("key", "", "key file  for ssl")
+	certFile   = lab.Conf.String("cert", "", "cert file for ssl")
+	cacertFile = lab.Conf.String("cacert", "", "client ca cert file for authentication")
 )
 
 func init() {
-	flag.Parse()
+	lab.LoadConf()
 	if !(*useHttp || *useHttps) {
 		return
 	}

@@ -5,7 +5,6 @@
 package gosrc
 
 import (
-	"flag"
 	"fmt"
 	"go/build"
 	"path/filepath"
@@ -13,10 +12,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mb0/lab"
 	"github.com/mb0/lab/ws"
 )
 
-var workpaths = flag.String("work", "./...", "path list of active packages. defaults to cwd")
+var workpaths = lab.Conf.String("work", "./...", "path list of active packages. defaults to cwd")
 
 var FlagGo uint64 = 1 << 16
 

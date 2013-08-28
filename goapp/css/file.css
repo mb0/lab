@@ -9,7 +9,7 @@ license that can be found in the LICENSE file.
 }
 .file header {
 	height: 2em;
-	margin: 0 0 0 50px;
+	margin: 0 0 0 56px;
 }
 .file ul {
 	background-color: #282828;
@@ -18,7 +18,7 @@ license that can be found in the LICENSE file.
 	-o-box-shadow: inset 0 0 10px black;
 	box-shadow: inset 0 0 10px black;
 	padding: 0 0 0 10px;
-	margin: 0 0 0 45px;
+	margin: 0 0 0 80px;
 	position: absolute;
 	top:2em; left:0; right:0; bottom: 0;
 	overflow: auto;

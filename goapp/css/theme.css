@@ -12,10 +12,11 @@ license that can be found in the LICENSE file.
 	border-right: 1px solid #4D4D4D;
 	text-shadow: 0 1px 1px #202020;
 	overflow: hidden;
-	min-width: 45px;
+	width: 80px;
 }
 .ace_lab .ace_gutter-layer {
-	text-align: right;
+	float: right;
+	margin-right: 4px;
 }
 .ace_lab .ace_print-margin {
 	right: 0;

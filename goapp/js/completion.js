@@ -177,7 +177,7 @@ Popup.prototype = {
 		}
 		var at = this.editor.selection.getCursor();
 		this.at = {row: at.row, column: at.column};
-		at.column -= this.prefix(at);
+		at.column -= this.prefix(at).length;
 		this.reposition(at, props.length);
 		this.proposals = props;
 		this.render();
@@ -197,7 +197,7 @@ Popup.prototype = {
 			this.el.style.bottom = '';
 		}
 		// clip scrollbar
-		this.listel.style.width = count > 6 ? 300 : 320;
+		this.listel.style.width = 1000;
 		this.el.style.height = (h&-1)+'px';
 		this.el.style.left = pos.left+'px';
 	},

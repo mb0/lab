@@ -41,7 +41,6 @@ Features:
  * Ace editor with gentle highlights and error markers for go, js and css.
  * Document collaboration with operational transformation.
  * External filesystem changes to open documents are merged.
- * godoc  Ctrl+Alt+Click on imports in go source files opens the doc view.
  * gofmt  Ctrl+Shift+F changes the document (does not save to disk)
  * gocode Ctrl+Space shows gocode completion proposals if installed.
 

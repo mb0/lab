@@ -4,7 +4,7 @@
 
 require.config({
 	paths: {
-		angular: "http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.1.5/angular",
+		angular: "//cdnjs.cloudflare.com/ajax/libs/angular.js/1.1.5/angular",
 		ace: '/static/ace',
 	},
 	shim: {
@@ -26,9 +26,13 @@ angular.module("goapp", ["goapp.conn", "goapp.tabs", "goapp.report", "goapp.file
 			'</pre>'
 		].join('\n'),
 	});
-	$logProvider.debugEnabled(true);
+	$logProvider.debugEnabled(false);
 })
 .run(function(conn) {
-	conn.connect("ws://localhost:8910/ws");
+	var proto = "ws:";
+	if (location.protocol == "https:") {
+		proto = "wss:";
+	}
+	conn.connect(proto +"//"+ location.host +"/ws");
 });
 });

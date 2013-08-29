@@ -18,6 +18,19 @@ import (
 	"github.com/mb0/lab/ws"
 )
 
+// BUG: https://code.google.com/p/go/issues/detail?id=6121
+// use all non ECDHE-ECDSA ciphers
+var ciphers = []uint16{
+	tls.TLS_RSA_WITH_RC4_128_SHA,
+	tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+	tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+	tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+	tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA,
+	tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
+	tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+	tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+}
+
 type htmod struct {
 	conf  Config
 	roots []string
@@ -82,8 +95,9 @@ func (mod *htmod) Run() {
 			pool := x509.NewCertPool()
 			pool.AddCert(cert)
 			server.TLSConfig = &tls.Config{
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  pool,
+				ClientAuth:   tls.RequireAndVerifyClientCert,
+				ClientCAs:    pool,
+				CipherSuites: ciphers,
 			}
 		}
 		err = server.ListenAndServeTLS(mod.conf.CertFile, mod.conf.KeyFile)

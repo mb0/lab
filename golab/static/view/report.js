@@ -9,13 +9,13 @@ var Report = Backbone.Model.extend({
 	idAttribute: "Id",
 	getresult: function() {
 		var src = this.get("Src").Result, test = this.get("Test").Result;
-		if (src && src.Err) return src;
+		if (src && src.Errmsg) return src;
 		if (test) return test;
 		return src;
 	},
 	haserrors: function(res) {
 		res = res || this.getresult();
-		return res && res.Err != null;
+		return res && res.Errmsg != null;
 	},
 	getoutput: function(res) {
 		if (!res) return "";
@@ -51,7 +51,7 @@ var ReportListItem = base.ListItemView.extend({
 		'<% if (o) { %><i class="icon icon-plus"></i><% } %>',
 		'</span> ',
 		'<span class="mode"><%= res && res.Mode || "" %></span> ',
-		'<a href="#file<%= get("Dir") %>"><%= get("Path") %></a> <%= res && res.Err || "" %>',
+		'<a href="#file<%= get("Dir") %>"><%= get("Path") %></a> <%= res && res.Errmsg || "" %>',
 		'</header>',
 		'<% if (o) { %><pre <%- err ? "" : \'style="display:none"\'',
 		'%>><%= fixoutput(o) %></pre><% } %>',

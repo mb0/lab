@@ -234,13 +234,18 @@ func (s *Src) WorkOn(path string) error {
 
 func work(s *Src, p *Pkg, dirty map[ws.Id]*Pkg) {
 	Scan(p)
-	isretry := p.Flag&MissingDeps != 0
-	Deps(s, p)
-	if p.Flag&MissingDeps != 0 {
-		if isretry {
-			fmt.Printf("package %s missing dependencies\n", p.Path)
-			return
+	res := Deps(s, p)
+	if res != nil {
+		// report missing dependencies on retry
+		p.Src.Result = res
+		rep := NewReport(p)
+		for _, f := range s.reportsignal {
+			f(rep)
 		}
+		return
+	}
+	if p.Flag&MissingDeps != 0 {
+		// retry later
 		dirty[p.Id] = p
 		return
 	}

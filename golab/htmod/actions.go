@@ -104,6 +104,8 @@ func (mod *htmod) actionRoute(m hub.Msg, from hub.Id) {
 		data, err := format.Source(([]byte)(*doc.Doc))
 		if err != nil {
 			log.Println(err, data)
+			// TODO report syntax error
+			return
 		}
 		rev := doc.Rev()
 		ops := doc.diffops(data)

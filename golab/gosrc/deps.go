@@ -4,19 +4,40 @@
 
 package gosrc
 
-func Deps(src *Src, pkg *Pkg) {
+import (
+	"bytes"
+	"fmt"
+	"time"
+)
+
+func Deps(src *Src, pkg *Pkg) *Result {
 	if pkg.Src.Info == nil {
 		// not scanned
-		return
+		return nil
 	}
 
+	retry := pkg.Flag&MissingDeps != 0
 	missing := make(map[string]struct{}, 100)
 	deps(src, pkg, missing)
-	if len(missing) > 0 {
-		pkg.Flag |= MissingDeps
-	} else {
+	if len(missing) == 0 {
 		// all deps found
 		pkg.Flag &^= MissingDeps
+		return nil
+	}
+	if !retry {
+		// flag missing dependencies and retry later
+		pkg.Flag |= MissingDeps
+		return nil
+	}
+	var buf bytes.Buffer
+	for pkgpath := range missing {
+		fmt.Fprintf(&buf, "\t%s\n", pkgpath)
+	}
+	return &Result{
+		Mode:   "deps",
+		Time:   time.Now().Unix(),
+		Errmsg: "missing dependencies",
+		Stdout: buf.String(),
 	}
 }
 

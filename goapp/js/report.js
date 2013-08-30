@@ -10,7 +10,7 @@ var fileNamesPattern = /\n(([\w_]+\.go)\:(\d+)(?:\:\d+)?\:)/g;
 
 function prepare(report, markers) {
 	report.Res = report.Test.Result || report.Src.Result;
-	report.Status = report.Res.Err ? "fail" : "ok";
+	report.Status = report.Res.Errmsg != null ? "fail" : "ok";
 	var out = (report.Res.Stdout || "") + (report.Res.Stderr || "");
 	// collect file names
 	var i, files = [], markermap = {};
@@ -23,7 +23,7 @@ function prepare(report, markers) {
 	for (i=0; i < files.length; i++) {
 		markermap[report.Dir+"/"+files[i].Name] = [];
 	}
-	if (report.Res.Err) {
+	if (report.Res.Errmsg != null) {
 		// parse error markers
 		var lines = out.split("\n");
 		for (i=0; i < lines.length; i++) {
@@ -78,7 +78,7 @@ angular.module("goapp.report", ["goapp.conn"])
 		tab.error = false;
 		for (id in r.map) {
 			report = r.map[id];
-			tab.error = tab.error || report.Res.Err;
+			tab.error = tab.error || report.Res.Errmsg != null;
 			r.list.push(report);
 		}
 		$rootScope.$digest();
@@ -101,7 +101,7 @@ angular.module("goapp.report", ["goapp.conn"])
 		template: [
 			'<ul><li class="report report-{{r.Status}}" ng-repeat="r in reports.list | orderBy:\'Path\'">',
 			'<span class="status">{{r.Status|uppercase}} <i ng-show="r.Output" ng-click="r.ShowDetail = !r.ShowDetail" class="{{ r.ShowDetail|reportIcon }}"></i></span>',
-			'<span>{{r.Res.Mode}}</span> <a ng-href="#/file{{ r.Dir }}">{{r.Path}}</a>',
+			'<span>{{r.Res.Mode}}</span> <a ng-href="#/file{{ r.Dir }}">{{r.Path}}</a> {{r.Res.Errmsg}}',
 			'<pre ng-show="r.Output && r.ShowDetail" ng-bind-html-unsafe="r.Output"></pre>',
 			'</li></ul>',
 		].join(""),

@@ -37,7 +37,7 @@ func init() {
 type Result struct {
 	Mode   string
 	Time   int64
-	Err    error
+	Errmsg string `json:",omitempty"`
 	Stdout string `json:",omitempty"`
 	Stderr string `json:",omitempty"`
 }
@@ -46,7 +46,9 @@ func Install(pkg *Pkg) *Result {
 	r := &Result{Mode: "install"}
 	cmd := newcmd(gotool, "go", "install", pkg.Path)
 
-	if r.Err = cmd.Start(); r.Err != nil {
+	err := cmd.Start()
+	if err != nil {
+		r.Errmsg = err.Error()
 		return r
 	}
 	r.Time = time.Now().Unix()
@@ -60,24 +62,29 @@ func Test(pkg *Pkg) *Result {
 
 	tmp, err := ioutil.TempDir("", "labtest")
 	if err != nil {
-		r.Err = err
+		r.Errmsg = err.Error()
 		return r
 	}
 	cmd.Dir = tmp
 	defer os.RemoveAll(tmp)
 
-	if r.Err = cmd.Start(); r.Err != nil {
+	err = cmd.Start()
+	if err != nil {
+		r.Errmsg = err.Error()
 		return r
 	}
 	r.Time = time.Now().Unix()
-	if wait(cmd, r); r.Err != nil {
+	if wait(cmd, r); r.Errmsg != "" {
 		return r
 	}
 	_, binary := filepath.Split(pkg.Path)
 	binary += testexe
 	cmd = newcmd(filepath.Join(tmp, binary), binary, "-test.v", "-test.short", "-test.timeout=3s")
 	cmd.Dir = pkg.Dir
-	if r.Err = cmd.Start(); r.Err != nil {
+
+	err = cmd.Start()
+	if err != nil {
+		r.Errmsg = err.Error()
 		return r
 	}
 	wait(cmd, r)
@@ -95,7 +102,10 @@ func newcmd(args ...string) *exec.Cmd {
 	}
 }
 func wait(cmd *exec.Cmd, r *Result) {
-	r.Err = cmd.Wait()
+	err := cmd.Wait()
+	if err != nil {
+		r.Errmsg = err.Error()
+	}
 	r.Stdout = cmd.Stdout.(*bytes.Buffer).String()
 	r.Stderr = cmd.Stderr.(*bytes.Buffer).String()
 }

@@ -42,11 +42,11 @@ func (r *Report) String() string {
 		if buf.Len() > 0 {
 			buf.WriteByte('\n')
 		}
-		if res.Err == nil {
+		if res.Errmsg == "" {
 			fmt.Fprintf(&buf, "%s%-7s %s", okmsg, res.Mode, r.Path)
 			continue
 		}
-		fmt.Fprintf(&buf, "%s%-7s %s %s", failmsg, res.Mode, r.Path, res.Err)
+		fmt.Fprintf(&buf, "%s%-7s %s %s", failmsg, res.Mode, r.Path, res.Errmsg)
 		var b, l []byte
 		for _, b = range [][]byte{[]byte(res.Stdout), []byte(res.Stderr)} {
 			for b, l = line(b); len(l) > 0; b, l = line(b) {

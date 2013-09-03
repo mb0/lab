@@ -12,7 +12,7 @@ require.config({
 	},
 });
 
-define(["angular", "conn", "tabs", "report", "file"], function(goapp) {
+define(["angular", "conn", "tabs", "report", "file"], function() {
 
 angular.module("goapp", ["goapp.conn", "goapp.tabs", "goapp.report", "goapp.file"])
 .config(function($routeProvider, $logProvider) {

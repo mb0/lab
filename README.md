@@ -62,13 +62,10 @@ Server code attributions
 
 Client code and asset attributions
  * require.js (c) The Dojo Foundation (BSD/MIT License)
- * json2.js by Douglas Crockford (public domain)
- * Underscore (c) Jeremy Ashkenas (MIT License)
- * Zepto (c) Thomas Fuchs (MIT License)
- * Backbone (c) Jeremy Ashkenas (MIT License)
  * Ace (c) Ajax.org B.V. (BSD License)
  * Font Awesome by Dave Gandy (SIL, MIT and CC BY 3.0 License)
  * Qunit (c) jQuery Foundation and others (MIT License)
+ * Angular.js (c) 2010-2012 Google, Inc. (MIT License)
 
 Recycled code attribution // was easier than adapting to golab
  * ot.js (c) Tim Baumann (MIT License)

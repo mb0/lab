@@ -5,7 +5,7 @@
 require.config({
 	paths: {
 		angular: "//cdnjs.cloudflare.com/ajax/libs/angular.js/1.1.5/angular",
-		ace: '/static/ace',
+		ace: '/ace',
 	},
 	shim: {
 		angular: {exports: "angular"},

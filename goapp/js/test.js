@@ -4,7 +4,7 @@
 
 require.config({
 	paths: {
-		ace: '/static/ace',
+		ace: '/ace',
 	},
 });
 

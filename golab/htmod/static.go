@@ -5,6 +5,7 @@
 package htmod
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,21 +14,13 @@ import (
 )
 
 func (mod *htmod) serveStatic() {
-	http.HandleFunc("/", index)
-	static := mod.findsrc("github.com/mb0/lab/golab/static")
-	statng := mod.findsrc("github.com/mb0/lab/goapp")
-	statace := mod.findsrc("github.com/mb0/ace/lib/ace")
-	if static == "" || statace == "" || statng == "" {
-		indexbytes = []byte("cannot find client files.")
-		return
+	ng := mod.findsrc("github.com/mb0/lab/goapp")
+	ace := mod.findsrc("github.com/mb0/ace/lib/ace")
+	if ng == "" || ace == "" {
+		log.Fatalf("cannot find client files.\n")
 	}
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(static))))
-	http.Handle("/ng/", http.StripPrefix("/ng/", http.FileServer(http.Dir(statng))))
-	http.Handle("/static/ace/", http.StripPrefix("/static/ace/", http.FileServer(http.Dir(statace))))
-	http.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/cache-manifest; charset=utf-8")
-		http.ServeFile(w, r, filepath.Join(static, "main.manifest"))
-	})
+	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir(ng))))
+	http.Handle("/ace/", http.StripPrefix("/ace/", http.FileServer(http.Dir(ace))))
 }
 
 func (mod *htmod) findsrc(path string) string {
@@ -39,27 +32,3 @@ func (mod *htmod) findsrc(path string) string {
 	}
 	return ""
 }
-
-func index(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	if r.Method != "GET" {
-		http.Error(w, "Method nod allowed", 405)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(indexbytes)
-}
-
-var indexbytes = []byte(`<!DOCTYPE html>
-<html lang="en" manifest="/manifest"><head>
-	<title>golab</title>
-	<meta charset="utf-8">
-	<link href="/static/main.css" rel="stylesheet">
-</head><body>
-	<div id="app"></div>
-	<script data-main="/static/main" src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.4/require.min.js"></script>
-</body></html>
-`)

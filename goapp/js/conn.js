@@ -16,9 +16,6 @@ angular.module("goapp.conn", [])
 	var queue = [];
 	var conn = {connected: false};
 	conn.connect = function(url) {
-		if (url === undefined) {
-			url = "ws://"+ $location.host() +"/ws";
-		}
 		log("connect", url);
 		ws = new WebSocket(url);
 		ws.onopen = function(e) {

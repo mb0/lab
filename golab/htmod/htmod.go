@@ -57,7 +57,6 @@ func (mod *htmod) Init() {
 	mod.ws = lab.Mod("ws").(*ws.Ws)
 	mod.src = lab.Mod("gosrc").(*gosrc.Src)
 	mod.serveStatic()
-	mod.serveContent()
 }
 
 func (mod *htmod) Run() {

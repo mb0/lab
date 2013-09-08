@@ -12,7 +12,7 @@ require.config({
 	},
 });
 
-define(["angular", "conn", "tabs", "report", "file"], function() {
+define(["modal", "angular", "conn", "tabs", "report", "file"], function(modal) {
 
 angular.module("goapp", ["goapp.conn", "goapp.tabs", "goapp.report", "goapp.file"])
 .config(function($routeProvider, $logProvider) {
@@ -28,7 +28,14 @@ angular.module("goapp", ["goapp.conn", "goapp.tabs", "goapp.report", "goapp.file
 	});
 	$logProvider.debugEnabled(false);
 })
-.run(function(conn) {
+.run(function($rootScope, conn) {
+	$rootScope.$on("conn.close", function(e, err) {
+		var el = document.createElement("div");
+		el.style.backgroundColor = "white";
+		el.textContent = "connection closed";
+		modal.show(el);
+	});
+
 	var proto = "ws:";
 	if (location.protocol == "https:") {
 		proto = "wss:";

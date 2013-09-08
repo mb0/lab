@@ -1,8 +1,7 @@
-/*
-Copyright 2013 Martin Schnabel. All rights reserved.
-Use of this source code is governed by a BSD-style
-license that can be found in the LICENSE file.
-*/
+// Copyright 2013 Martin Schnabel. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 // package completion provides completion popup for the ace editor.
 define(["require", "ace/editor", "ace/virtual_renderer", "ace/keyboard/hash_handler"],
 function(require) {

@@ -1,0 +1,23 @@
+/*
+Copyright 2013 Martin Schnabel. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+*/
+#modal-layer {
+	z-index: 808090;
+	position: fixed;
+	top: 0; left: 0;
+	width: 100%; height: 100%;
+	cursor: default;
+	overflow: hidden;
+	background: rgba(255, 255, 255, 0.4);
+}
+.modal-cont {
+	z-index: 808091;
+	position: fixed;
+	min-width: 400px;
+	min-height: 200px;
+	padding: 10px;
+	background: white;
+	border: thin solid black;
+}

@@ -63,6 +63,7 @@ func (w *ctrl) remove(fsop Op, r *Res) error {
 	for i := len(rm) - 1; i >= 0; i-- {
 		c := rm[i]
 		w.config.handle(fsop|Remove, c)
+		c.Parent = nil
 		if c.Dir != nil {
 			c.Children = nil
 		}

@@ -51,39 +51,34 @@ type Dir struct {
 // Res describes a workspace resource.
 type Res struct {
 	sync.Mutex
-	Id     Id
-	Name   string
-	Flag   uint64
-	Parent *Res
+	Id      Id
+	Name    string
+	Flag    uint64
+	Parent  *Res
+	DirPath string
 	*Dir
-}
-
-func (r *Res) path(lock bool) string {
-	if r == nil {
-		return ""
-	}
-	if lock {
-		r.Lock()
-		defer r.Unlock()
-	}
-	if r.Dir != nil {
-		return r.Dir.Path
-	}
-	p := r.Parent.path(lock)
-	if len(p) < 2 {
-		return p + r.Name
-	}
-	return p + string(os.PathSeparator) + r.Name
 }
 
 // Path returns the full resource path.
 func (r *Res) Path() string {
-	return r.path(true)
+	r.Lock()
+	defer r.Unlock()
+	if r.Dir != nil {
+		return r.Dir.Path
+	}
+	if len(r.DirPath) < 2 {
+		return r.DirPath + r.Name
+	}
+	return r.DirPath + string(os.PathSeparator) + r.Name
 }
 
 func newChild(pa *Res, name string, isdir, stat bool) (*Res, error) {
-	r := &Res{Name: name, Parent: pa}
-	path := r.path(false)
+	r := &Res{Name: name, Parent: pa, DirPath: pa.Dir.Path}
+	path := r.DirPath
+	if len(path) >= 2 {
+		path += string(os.PathSeparator)
+	}
+	path += r.Name
 	r.Id = NewId(path)
 	if stat {
 		fi, err := os.Stat(path)

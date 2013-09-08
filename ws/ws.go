@@ -162,6 +162,7 @@ func (w *Ws) mount(path string) (*Res, error) {
 	r = &Res{Id: id, Name: f, Flag: FlagDir | FlagMount, Dir: &Dir{Path: path}}
 	// add virtual parent
 	r.Parent = w.logicalParent(d)
+	r.DirPath = r.Parent.Dir.Path
 	r.Parent.Children = insert(r.Parent.Children, r)
 	w.all[id] = r
 	w.config.handle(Add, r)
@@ -190,6 +191,7 @@ func (w *Ws) Close() {
 func (w *Ws) logicalParent(path string) *Res {
 	parts := split(path)
 	r := w.root
+	dpath := r.Path()
 	for i := len(parts) - 1; i >= 0; i-- {
 		if r.Dir == nil {
 			r.Dir = &Dir{Path: r.Path()}
@@ -197,7 +199,7 @@ func (w *Ws) logicalParent(path string) *Res {
 			r = c
 			continue
 		}
-		c := &Res{Name: parts[i], Parent: r, Flag: FlagDir | FlagLogical}
+		c := &Res{Name: parts[i], Parent: r, Flag: FlagDir | FlagLogical, DirPath: dpath}
 		p := c.Path()
 		c.Dir = &Dir{Path: p}
 		c.Id = NewId(p)

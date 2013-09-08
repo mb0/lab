@@ -39,37 +39,23 @@ func (r *Report) String() string {
 		if res == nil {
 			continue
 		}
-		if buf.Len() > 0 {
-			buf.WriteByte('\n')
-		}
 		if res.Errmsg == "" {
-			fmt.Fprintf(&buf, "%s%-7s %s", okmsg, res.Mode, r.Path)
+			fmt.Fprintf(&buf, "%s%-7s %s\n", okmsg, res.Mode, r.Path)
 			continue
 		}
-		fmt.Fprintf(&buf, "%s%-7s %s %s", failmsg, res.Mode, r.Path, res.Errmsg)
-		var b, l []byte
-		for _, b = range [][]byte{[]byte(res.Stdout), []byte(res.Stderr)} {
-			for b, l = line(b); len(l) > 0; b, l = line(b) {
-				if len(l) == 1 || l[0] == '#' {
-					continue
-				}
-				buf.WriteByte('\n')
-				buf.WriteString(failpre)
-				buf.Write(l)
+		fmt.Fprintf(&buf, "%s%-7s %s %s\n", failmsg, res.Mode, r.Path, res.Errmsg)
+		for _, l := range res.Output {
+			if len(l) == 1 || l[0] == '#' {
+				continue
 			}
+			buf.WriteString(failpre)
+			buf.WriteString(l)
 		}
 	}
 	if buf.Len() == 0 {
 		return pending + r.Path
 	}
 	return buf.String()
-}
-
-func line(buf []byte) ([]byte, []byte) {
-	if i := bytes.IndexByte(buf, '\n'); i > -1 {
-		return buf[i+1:], buf[:i]
-	}
-	return nil, buf
 }
 
 type byDir []*Report

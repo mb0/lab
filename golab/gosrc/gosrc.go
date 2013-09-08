@@ -59,7 +59,7 @@ func (s *Src) Init() {
 		}
 	}
 	s.SignalReports(func(r *Report) {
-		fmt.Println(r)
+		fmt.Print(r)
 	})
 }
 

@@ -11,7 +11,6 @@ var fileNamesPattern = /\n(([\w_]+\.go)\:(\d+)(?:\:\d+)?\:)/g;
 function prepare(report, markers) {
 	report.Res = report.Test.Result || report.Src.Result;
 	report.Status = report.Res.Errmsg != null ? "fail" : "ok";
-	var out = (report.Res.Stdout || "") + (report.Res.Stderr || "");
 	// collect file names
 	var i, files = [], markermap = {};
 	if (report.Src && report.Src.Info) {
@@ -23,9 +22,9 @@ function prepare(report, markers) {
 	for (i=0; i < files.length; i++) {
 		markermap[report.Dir+"/"+files[i].Name] = [];
 	}
-	if (report.Res.Errmsg != null) {
+	if (report.Res.Errmsg && report.Res.Output) {
 		// parse error markers
-		var lines = out.split("\n");
+		var lines = report.Res.Output;
 		for (i=0; i < lines.length; i++) {
 			var match = lines[i].match(errorPattern);
 			if (!match) {
@@ -47,9 +46,12 @@ function prepare(report, markers) {
 		markers[i] = markermap[i];
 	}
 	// add html links to file paths to the output
-	out = out.replace(filePathsPattern, '<a href="#/file$1#L$4">$2$3:$4</a>');
-	out = out.replace(fileNamesPattern, '\n<a href="#/file' + report.Dir + '/$2#L$3">$1</a>');
-	report.Output = out.replace(/(^(#.*|\S)\n|\n#[^\n]*)/g, "");
+	if (report.Res.Output) {
+		var text = report.Res.Output.join("");
+		text = text.replace(filePathsPattern, '<a href="#/file$1#L$4">$2$3:$4</a>');
+		text = text.replace(fileNamesPattern, '\n<a href="#/file' + report.Dir + '/$2#L$3">$1</a>');
+		report.Text = text.replace(/(^(#.*|\S)\n|\n#[^\n]*)/g, "");
+	}
 }
 
 angular.module("goapp.report", ["goapp.conn"])
@@ -100,9 +102,9 @@ angular.module("goapp.report", ["goapp.conn"])
 		replace: true,
 		template: [
 			'<ul><li class="report report-{{r.Status}}" ng-repeat="r in reports.list | orderBy:\'Path\'">',
-			'<span class="status">{{r.Status|uppercase}} <i ng-show="r.Output" ng-click="r.ShowDetail = !r.ShowDetail" class="{{ r.ShowDetail|reportIcon }}"></i></span>',
+			'<span class="status">{{r.Status|uppercase}} <i ng-show="r.Text" ng-click="r.ShowDetail = !r.ShowDetail" class="{{ r.ShowDetail|reportIcon }}"></i></span>',
 			'<span>{{r.Res.Mode}}</span> <a ng-href="#/file{{ r.Dir }}">{{r.Path}}</a> {{r.Res.Errmsg}}',
-			'<pre ng-show="r.Output && r.ShowDetail" ng-bind-html-unsafe="r.Output"></pre>',
+			'<pre ng-show="r.Text && r.ShowDetail" ng-bind-html-unsafe="r.Text"></pre>',
 			'</li></ul>',
 		].join(""),
 	};

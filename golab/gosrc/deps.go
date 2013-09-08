@@ -5,7 +5,6 @@
 package gosrc
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 )
@@ -29,15 +28,15 @@ func Deps(src *Src, pkg *Pkg) *Result {
 		pkg.Flag |= MissingDeps
 		return nil
 	}
-	var buf bytes.Buffer
+	var output []string
 	for pkgpath := range missing {
-		fmt.Fprintf(&buf, "\t%s\n", pkgpath)
+		output = append(output, fmt.Sprintf("\t%s\n", pkgpath))
 	}
 	return &Result{
 		Mode:   "deps",
 		Time:   time.Now().Unix(),
 		Errmsg: "missing dependencies",
-		Stdout: buf.String(),
+		Output: output,
 	}
 }
 

@@ -38,8 +38,7 @@ type Result struct {
 	Mode   string
 	Time   int64
 	Errmsg string `json:",omitempty"`
-	Stdout string `json:",omitempty"`
-	Stderr string `json:",omitempty"`
+	Output []string
 }
 
 func Install(pkg *Pkg) *Result {
@@ -92,13 +91,13 @@ func Test(pkg *Pkg) *Result {
 }
 
 func newcmd(args ...string) *exec.Cmd {
-	var out, err bytes.Buffer
+	var buf bytes.Buffer
 	return &exec.Cmd{
 		Path:   args[0],
 		Args:   args[1:],
 		Dir:    os.TempDir(),
-		Stdout: &out,
-		Stderr: &err,
+		Stdout: &buf,
+		Stderr: &buf,
 	}
 }
 func wait(cmd *exec.Cmd, r *Result) {
@@ -106,6 +105,18 @@ func wait(cmd *exec.Cmd, r *Result) {
 	if err != nil {
 		r.Errmsg = err.Error()
 	}
-	r.Stdout = cmd.Stdout.(*bytes.Buffer).String()
-	r.Stderr = cmd.Stderr.(*bytes.Buffer).String()
+	b, l := line(cmd.Stdout.(*bytes.Buffer).Bytes())
+	for ; len(l) > 0; b, l = line(b) {
+		if len(l) > 1 {
+			r.Output = append(r.Output, string(l))
+		}
+	}
+}
+
+
+func line(buf []byte) ([]byte, []byte) {
+	if i := bytes.IndexByte(buf, '\n'); i > -1 {
+		return buf[i+1:], buf[:i+1]
+	}
+	return nil, buf
 }

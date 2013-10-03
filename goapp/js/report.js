@@ -4,9 +4,9 @@
 
 define(["angular", "conn"], function(goapp) {
 
-var errorPattern = /^((\/(?:[^\/\s]+\/)+)?(\S+?\.go))\:(\d+)\:(?:(\d+)\:)?(.*)$/;
-var filePathsPattern = /(\/([^\/\s]+\/)+(\S+?\.go))\:(\d+)(?:\:(\d+))?\:/g;
-var fileNamesPattern = /\n(([\w_]+\.go)\:(\d+)(?:\:\d+)?\:)/g;
+var errorPattern = /^((\/(?:[^\/\s]+\/)+)?(\S+\.go))\:(\d+)\:(?:(\d+)\:)?(.*)[\n]?$/;
+var filePathsPattern = /(\/([^\/\s]+\/)+(\S+\.go))\:(\d+)(?:\:(\d+))?\:/g;
+var fileNamesPattern = /\n[\s]*((\S+\.go)\:(\d+)(?:\:\d+)?\:)/g;
 
 function prepare(report, markers) {
 	report.Res = report.Test.Result || report.Src.Result;
@@ -68,6 +68,9 @@ angular.module("goapp.report", ["goapp.conn"])
 	var r = $rootScope.reports = {map:{}, list:[]};
 	var m = $rootScope.markers = {};
 	function add(reports) {
+		if (!reports) {
+			return;
+		}
 		var i, id, old, report;
 		for (i=0; i < reports.length; i++) {
 			report = reports[i];

@@ -7,8 +7,6 @@ package ws
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"sync"
@@ -58,6 +56,8 @@ type Config struct {
 	Handler Handler
 	// Filter filters resources if set.
 	Filter Filter
+
+	*Backend
 }
 
 func (c *Config) filter(r *Res) bool {
@@ -85,6 +85,7 @@ type Ws struct {
 	root    *Res
 	all     map[Id]*Res
 	watcher Watcher
+	fs      Backend
 }
 
 // New creates a workspace with configuration c.
@@ -93,19 +94,26 @@ func New(c Config) *Ws {
 	if runtime.GOOS != "windows" {
 		name = "/"
 	}
-	r := &Res{Id: NewId(name), Name: name}
-	w := &Ws{config: c, root: r, all: make(map[Id]*Res, c.CapHint)}
-	w.all[r.Id] = r
+	w := &Ws{
+		config: c,
+		root:   &Res{Id: NewId(name), Name: name, Dir: &Dir{Path: name}},
+		all:    make(map[Id]*Res, c.CapHint),
+		fs:     Filesystem,
+	}
+	w.all[w.root.Id] = w.root
+	if c.Backend != nil {
+		w.fs = *c.Backend
+	}
 	return w
 }
 
 // Mount adds the directory tree at path to the workspace.
 func (w *Ws) Mount(path string) (*Res, error) {
-	fi, err := os.Stat(path)
+	isdir, err := w.fs.IsDir(path)
 	if err != nil {
 		return nil, err
 	}
-	if !fi.IsDir() {
+	if !isdir {
 		return nil, fmt.Errorf("not a directory")
 	}
 	r, err := w.mount(path)
@@ -117,7 +125,7 @@ func (w *Ws) Mount(path string) (*Res, error) {
 		return r, nil
 	}
 	r.Lock()
-	err = read(r, w.config.Filter)
+	err = w.read(r, w.config.Filter)
 	r.Unlock()
 	if err != nil {
 		return r, err
@@ -142,10 +150,15 @@ func (w *Ws) Walk(list []*Res, visit func(r *Res) error) error {
 	defer w.RUnlock()
 	return walk(list, visit)
 }
+func (w *Ws) WalkAll(visit func(r *Res) error) error {
+	w.RLock()
+	defer w.RUnlock()
+	return walk([]*Res{w.root}, visit)
+}
 func (w *Ws) mount(path string) (*Res, error) {
-	path = filepath.Clean(path)
+	path = w.fs.Clean(path)
 	id := NewId(path)
-	d, f := filepath.Split(path)
+	d, f := w.fs.Split(path)
 	w.Lock()
 	defer w.Unlock()
 	if w.watcher == nil && w.config.Watcher != nil {
@@ -189,18 +202,16 @@ func (w *Ws) Close() {
 	w.root = nil
 }
 func (w *Ws) logicalParent(path string) *Res {
-	parts := split(path)
+	parts := w.split(path)
 	r := w.root
 	dpath := r.Path()
 	for i := len(parts) - 1; i >= 0; i-- {
-		if r.Dir == nil {
-			r.Dir = &Dir{Path: r.Path()}
-		} else if c := find(r.Children, parts[i]); c != nil {
+		if c := find(r.Children, parts[i]); c != nil {
 			r = c
 			continue
 		}
 		c := &Res{Name: parts[i], Parent: r, Flag: FlagDir | FlagLogical, DirPath: dpath}
-		p := c.Path()
+		p := dpath + w.fs.Seperator + c.Name
 		c.Dir = &Dir{Path: p}
 		c.Id = NewId(p)
 		r.Children = insert(r.Children, c)
@@ -208,14 +219,14 @@ func (w *Ws) logicalParent(path string) *Res {
 	}
 	return r
 }
-func split(path string) []string {
+func (w *Ws) split(path string) []string {
 	parts := make([]string, 0, 8)
 	dir, file := path, ""
 	for dir != "" {
-		if i := len(dir) - 1; dir[i] == os.PathSeparator {
+		if i := len(dir) - 1; dir[i] == w.fs.Seperator[0] {
 			dir = dir[:i]
 		}
-		dir, file = filepath.Split(dir)
+		dir, file = w.fs.Split(dir)
 		if file != "" {
 			parts = append(parts, file)
 			continue
@@ -227,19 +238,14 @@ func split(path string) []string {
 	}
 	return parts
 }
-func read(r *Res, filter Filter) error {
-	f, err := os.Open(r.Dir.Path)
-	if err != nil {
-		return err
-	}
-	list, err := f.Readdir(-1)
-	f.Close()
+func (w *Ws) read(r *Res, filter Filter) error {
+	list, err := w.fs.ReadDir(r.Dir.Path)
 	if err != nil {
 		return err
 	}
 	children := make([]*Res, 0, len(list))
 	for _, fi := range list {
-		c, _ := newChild(r, fi.Name(), fi.IsDir(), false)
+		c, _ := w.newChild(r, fi.Name(), fi.IsDir(), false)
 		children = append(children, c)
 	}
 	sort.Sort(byTypeAndName(children))
@@ -250,7 +256,7 @@ func read(r *Res, filter Filter) error {
 			continue
 		}
 		if c.Flag&FlagDir != 0 {
-			if err := read(c, filter); err != nil {
+			if err := w.read(c, filter); err != nil {
 				fmt.Println(err)
 			}
 		}

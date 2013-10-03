@@ -7,7 +7,6 @@ package ws
 import (
 	"fmt"
 	"hash/fnv"
-	"os"
 	"sort"
 	"sync"
 )
@@ -66,26 +65,23 @@ func (r *Res) Path() string {
 	if r.Dir != nil {
 		return r.Dir.Path
 	}
-	if len(r.DirPath) < 2 {
-		return r.DirPath + r.Name
-	}
-	return r.DirPath + string(os.PathSeparator) + r.Name
+	return r.DirPath + r.Name
 }
 
-func newChild(pa *Res, name string, isdir, stat bool) (*Res, error) {
-	r := &Res{Name: name, Parent: pa, DirPath: pa.Dir.Path}
-	path := r.DirPath
+func (w *Ws) newChild(pa *Res, name string, isdir, stat bool) (*Res, error) {
+	path := pa.Dir.Path
 	if len(path) >= 2 {
-		path += string(os.PathSeparator)
+		path += w.fs.Seperator
 	}
+	r := &Res{Name: name, Parent: pa, DirPath: path}
 	path += r.Name
 	r.Id = NewId(path)
 	if stat {
-		fi, err := os.Stat(path)
+		var err error
+		isdir, err = w.fs.IsDir(path)
 		if err != nil {
 			return nil, err
 		}
-		isdir = fi.IsDir()
 	}
 	if isdir {
 		r.Flag |= FlagDir

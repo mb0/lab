@@ -113,7 +113,6 @@ func wait(cmd *exec.Cmd, r *Result) {
 	}
 }
 
-
 func line(buf []byte) ([]byte, []byte) {
 	if i := bytes.IndexByte(buf, '\n'); i > -1 {
 		return buf[i+1:], buf[:i+1]

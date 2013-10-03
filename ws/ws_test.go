@@ -6,7 +6,6 @@ package ws
 
 import (
 	"fmt"
-	"go/build"
 	"io/ioutil"
 	"os"
 	"runtime"
@@ -23,7 +22,7 @@ func gcandstat() string {
 	return fmt.Sprintf(f, kb(mem.Alloc), kb(mem.TotalAlloc), kb(mem.HeapAlloc), kb(mem.HeapSys), mem.HeapObjects, mem.NumGC)
 }
 func TestWalkSrc(t *testing.T) {
-	dirs := build.Default.SrcDirs()
+	dirs := []string{runtime.GOROOT()}
 	t.Log(dirs)
 	w := New(Config{CapHint: 8000})
 	start := time.Now()
@@ -152,7 +151,8 @@ func TestWatch(t *testing.T) {
 
 func TestSplitPath(t *testing.T) {
 	expect := []string{"c", "b", "a"}
-	for i, p := range split("/a/b/c") {
+	w := &Ws{fs: Filesystem}
+	for i, p := range w.split("/a/b/c") {
 		if e := expect[i]; p != e {
 			fmt.Printf("%s != %s\n", p, e)
 		}

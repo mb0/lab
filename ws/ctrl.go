@@ -80,7 +80,8 @@ func (w *ctrl) add(fsop Op, p *Res, name string) error {
 		// ignore duplicate
 		return nil
 	}
-	r, err := newChild(p, name, false, true)
+	ws := (*Ws)(w)
+	r, err := ws.newChild(p, name, false, true)
 	if err != nil {
 		return err
 	}
@@ -94,10 +95,10 @@ func (w *ctrl) add(fsop Op, p *Res, name string) error {
 		w.config.handle(fsop|Add, r)
 		return nil
 	}
-	if err = read(r, w.config.Filter); err != nil {
+	if err = ws.read(r, w.config.Filter); err != nil {
 		return err
 	}
 	w.config.handle(fsop|Add, r)
-	(*Ws)(w).addAllChildren(fsop, r)
+	ws.addAllChildren(fsop, r)
 	return nil
 }

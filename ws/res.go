@@ -18,9 +18,6 @@ const (
 	FlagIgnore
 )
 
-// Skip is returned by walk visitors to prevent visiting children of the resource in context.
-var Skip = fmt.Errorf("skip")
-
 // Id identifies a workspace resource uniquely.
 // Having a fnv32 hash collision is considered a user error.
 type Id uint32
@@ -134,30 +131,6 @@ func find(l []*Res, name string) *Res {
 	for _, r := range l {
 		if r.Name == name {
 			return r
-		}
-	}
-	return nil
-}
-
-func walk(l []*Res, f func(*Res) error) error {
-	var err error
-	for _, c := range l {
-		if err = f(c); err == Skip {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		var cl []*Res
-		c.Lock()
-		if c.Dir != nil {
-			cl = c.Children
-		}
-		c.Unlock()
-		if len(cl) > 0 {
-			if err = walk(c.Children, f); err != nil {
-				return err
-			}
 		}
 	}
 	return nil

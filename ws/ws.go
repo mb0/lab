@@ -143,18 +143,6 @@ func (w *Ws) Res(id Id) *Res {
 	return w.all[id]
 }
 
-// Walk calls visit for all resources in list and all their descendants.
-// If the visit returns Skip for a resource its children are not visited.
-func (w *Ws) Walk(list []*Res, visit func(r *Res) error) error {
-	w.RLock()
-	defer w.RUnlock()
-	return walk(list, visit)
-}
-func (w *Ws) WalkAll(visit func(r *Res) error) error {
-	w.RLock()
-	defer w.RUnlock()
-	return walk([]*Res{w.root}, visit)
-}
 func (w *Ws) mount(path string) (*Res, error) {
 	path = w.fs.Clean(path)
 	id := NewId(path)

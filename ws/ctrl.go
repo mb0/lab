@@ -52,10 +52,9 @@ func (w *ctrl) remove(fsop Op, r *Res) error {
 	r.Unlock()
 	rm := []*Res{r}
 	if r.Dir != nil {
-		walk(r.Children, func(c *Res) error {
-			rm = append(rm, c)
-			return nil
-		})
+		for iter := Walk(r); iter.Next(); {
+			rm = append(rm, iter.Res())
+		}
 	}
 	for _, c := range rm {
 		c.Lock()

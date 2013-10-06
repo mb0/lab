@@ -199,11 +199,16 @@ func (w *Ws) logicalParent(path string) *Res {
 			continue
 		}
 		c := &Res{Name: parts[i], Parent: r, Flag: FlagDir | FlagLogical, DirPath: dpath}
-		p := dpath + w.fs.Seperator + c.Name
+		var p string
+		if dpath == w.fs.Seperator {
+			p = dpath + c.Name
+		} else {
+			p = dpath + w.fs.Seperator + c.Name
+		}
 		c.Dir = &Dir{Path: p}
 		c.Id = NewId(p)
 		r.Children = insert(r.Children, c)
-		w.all[c.Id], r = c, c
+		w.all[c.Id], r, dpath = c, c, p
 	}
 	return r
 }

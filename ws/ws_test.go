@@ -38,6 +38,9 @@ func TestWalkSrc(t *testing.T) {
 	if first.Parent == nil || len(first.Parent.Children) == 0 {
 		t.Errorf("error mount parent missing\n")
 	}
+	if w.root.Children[0].Path()[:2] == "//" {
+		t.Errorf("error first path\n")
+	}
 	for id, r := range w.all {
 		if rid := NewId(r.Path()); id != rid {
 			t.Error(id, "!=", rid, r.Path())

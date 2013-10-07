@@ -11,7 +11,7 @@ angular.module("goapp.tabs", [])
 .run(function($rootScope, $location) {
 	var tabs = $rootScope.tabs = {};
 	tabs.list = [
-		{path:"/about", name:'<i class="icon-beaker" title="about"></i>'},
+		{path:"/overview", name:'<i class="icon-beaker" title="overview"></i>'},
 		{path:"/report", name:'<i class="icon-circle report" title="report"></i>'},
 	];
 	tabs.map = {};

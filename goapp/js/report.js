@@ -89,10 +89,8 @@ angular.module("goapp.report", ["goapp.conn"])
 		$rootScope.$digest();
 	}
 	$rootScope.$on("conn.msg", function(e, msg) {
-		if (msg.Head == "reports") {
+		if (msg.Head == "report") {
 			add(msg.Data);
-		} else if (msg.Head == "report") {
-			add([msg.Data]);
 		}
 	});
 })

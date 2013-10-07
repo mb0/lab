@@ -16,6 +16,7 @@ import (
 	"github.com/mb0/lab/golab/gosrc"
 	"github.com/mb0/lab/hub"
 	"github.com/mb0/lab/ws"
+	"github.com/mb0/lab/ws/find"
 )
 
 // BUG: https://code.google.com/p/go/issues/detail?id=6121
@@ -68,7 +69,7 @@ func (mod *htmod) Run() {
 		}
 	}()
 	mod.src.SignalReports(func(r *gosrc.Report) {
-		m, err := hub.Marshal("report", r)
+		m, err := hub.Marshal("report", []*gosrc.Report{r})
 		if err != nil {
 			log.Println(err)
 			return
@@ -116,13 +117,19 @@ func (mod *htmod) route(m hub.Msg, id hub.Id) {
 	switch m.Head {
 	case hub.Signon:
 		// send reports for all working packages
-		msg, err = hub.Marshal("reports", mod.src.AllReports())
+		msg, err = hub.Marshal("report", mod.src.AllReports())
 	case "stat":
 		var path string
 		if err = m.Unmarshal(&path); err != nil {
 			break
 		}
 		msg, err = mod.stat(path)
+	case "find":
+		var query string
+		if err = m.Unmarshal(&query); err != nil {
+			break
+		}
+		msg, err = mod.find(query)
 	case "subscribe", "unsubscribe", "revise", "publish":
 		mod.docroute(m, id)
 		return
@@ -140,7 +147,7 @@ func (mod *htmod) route(m hub.Msg, id hub.Id) {
 }
 
 func (mod *htmod) stat(path string) (hub.Msg, error) {
-	res := apiRes{ws.NewId(path), path, false}
+	res := apiRes{ws.NewId(path), path, false, path}
 	if r := mod.ws.Res(res.Id); r != nil {
 		r.Lock()
 		defer r.Unlock()
@@ -153,29 +160,51 @@ func (mod *htmod) stat(path string) (hub.Msg, error) {
 						c.Id,
 						c.Name,
 						c.Flag&ws.FlagDir != 0,
+						"",
 					})
 				}
 			}
-			return hub.Marshal("stat", struct {
-				apiRes
-				Path     string
-				Children []apiRes
-			}{res, path, cs})
+			return hub.Marshal("stat", apiStat{res, cs, ""})
 		}
-		return hub.Marshal("stat", struct {
-			apiRes
-			Path string
-		}{res, path})
+		return hub.Marshal("stat", apiStat{res, nil, ""})
 	}
-	return hub.Marshal("stat.err", struct {
-		apiRes
-		Path  string
-		Error string
-	}{res, path, "not found"})
+	return hub.Marshal("stat", apiStat{res, nil, "not found"})
+}
+
+type apiStat struct {
+	apiRes
+	Children []apiRes `json:",omitempty"`
+	Error    string   `json:",omitempty"`
+}
+
+func (mod *htmod) find(query string) (hub.Msg, error) {
+	mod.ws.Lock()
+	defer mod.ws.Unlock()
+	list, err := find.Find(mod.ws, query)
+	if err != nil {
+		return hub.Marshal("find", apiFind{query, nil, err.Error()})
+	}
+	res := make([]apiRes, 0, len(list))
+	for _, r := range list {
+		res = append(res, apiRes{
+			r.Id,
+			r.Name,
+			r.Flag&ws.FlagDir != 0,
+			r.Path(),
+		})
+	}
+	return hub.Marshal("find", apiFind{query, res, ""})
+}
+
+type apiFind struct {
+	Query  string
+	Result []apiRes `json:",omitempty"`
+	Error  string   `json:",omitempty"`
 }
 
 type apiRes struct {
 	Id    ws.Id
 	Name  string
 	IsDir bool
+	Path  string `json:",omitempty"`
 }

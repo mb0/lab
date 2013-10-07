@@ -27,6 +27,33 @@ a { text-decoration: none; cursor: pointer;}
 #view a {
 	color: #CFAEA9;
 }
-.about {
-	padding: 0 15px;
+#overview {
+	padding: 0 0 0 10px;
+	margin: 0 0 0 80px;
+	position: absolute;
+	top:0; left:0; right:0; bottom: 0;
+}
+#overview > div {
+	overflow: auto;
+	position: absolute;
+	top:0; left:0; right:0; bottom: 0;
+}
+#overview ul {
+	background-color: #282828;
+	-webkit-box-shadow: inset 0 0 10px black;
+	-moz-box-shadow: inset 0 0 10px black;
+	-o-box-shadow: inset 0 0 10px black;
+	box-shadow: inset 0 0 10px black;
+	padding-left: 10px;
+}
+#overview .about {
+	position: absolute;
+	left:0; right: 0; bottom: 0;
+	height: 2em;
+	text-align: right;
+	margin-right: 20px;
+	font-size: 12px;
+}
+#overview a:hover {
+	color: white;
 }

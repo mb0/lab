@@ -54,7 +54,7 @@ angular.module("goapp.file", ["goapp.conn", "goapp.editor"])
 		$location.path("/file"+ path +"/"+ c.Name);
 	};
 	var dereg = $scope.$on("conn.msg", function(e, msg) {
-		if ((msg.Head == "stat" || msg.Head == "stat.err") && msg.Data.Path == path) {
+		if (msg.Head == "stat" && msg.Data.Path == path) {
 			msg.Data.header = fileHeader(msg.Data);
 			msg.Data.state = msg.Data.Error ? "error" : (msg.Data.IsDir ? "folder" : "file");
 			$scope.file = msg.Data;

@@ -33,10 +33,10 @@ license that can be found in the LICENSE file.
 #tabs .error .report {
 	color: #684242;
 }
-#tabs .icon-remove {
+#tabs .icon-remove, #overview .icon-remove {
 	color: #BBBBBB;
 	font-size: 12px;
 }
-#tabs .icon-remove:hover {
+#tabs .icon-remove:hover, #overview .icon-remove:hover {
 	color: #222222;
 }

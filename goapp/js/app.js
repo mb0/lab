@@ -12,20 +12,10 @@ require.config({
 	},
 });
 
-define(["modal", "angular", "conn", "tabs", "report", "file"], function(modal) {
+define(["modal", "angular", "conn", "tabs", "overview", "report", "file"], function(modal) {
 
-angular.module("goapp", ["goapp.conn", "goapp.tabs", "goapp.report", "goapp.file"])
+angular.module("goapp", ["goapp.conn", "goapp.tabs", "goapp.overview", "goapp.report", "goapp.file"])
 .config(function($routeProvider, $logProvider) {
-	$routeProvider.when("/about", {
-		controller: "TabCtrl",
-		template: [
-			'<pre class="about">',
-			'<h3>golab</h3>'+
-			'<a href="https://github.com/mb0/lab">github.com/mb0/lab</a> (c) Martin Schnabel '+
-			'<a href="https://raw.github.com/mb0/lab/master/LICENSE">BSD License</a>',
-			'</pre>'
-		].join('\n'),
-	});
 	$logProvider.debugEnabled(false);
 })
 .run(function($rootScope, conn) {

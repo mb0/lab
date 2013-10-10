@@ -4,8 +4,9 @@
 package find
 
 import (
+	"fmt"
 	"github.com/mb0/lab/ws"
-	"strings"
+	"regexp"
 )
 
 const (
@@ -29,9 +30,42 @@ type Query struct {
 }
 
 type Term struct {
-	Word     string
+	Words    []string
 	Wildcard int
 	Type     int
+}
+
+func (t Term) Equal(o Term) bool {
+	if t.Type != o.Type || t.Wildcard != o.Wildcard {
+		return false
+	}
+	if len(t.Words) != len(o.Words) {
+		return false
+	}
+	for i, tw := range t.Words {
+		if tw != o.Words[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (t Term) Compile() (*regexp.Regexp, error) {
+	if len(t.Words) == 0 {
+		return nil, nil
+	}
+	s := regexp.QuoteMeta(t.Words[0])
+	for _, w := range t.Words[1:] {
+		s = fmt.Sprintf("%s.*%s", s, regexp.QuoteMeta(w))
+	}
+	var start, end string
+	if t.Wildcard&(Start|DblStart) != 0 {
+		start = ".*"
+	}
+	if t.Wildcard&(End|DblEnd) != 0 {
+		end = ".*"
+	}
+	return regexp.Compile(fmt.Sprintf("^%s%s%s$", start, s, end))
 }
 
 func Find(w *ws.Ws, query string) ([]*ws.Res, error) {
@@ -46,21 +80,18 @@ func Find(w *ws.Ws, query string) ([]*ws.Res, error) {
 	terms := q.Terms
 	for i := 0; i < len(terms); i++ {
 		t := terms[i]
+		re, err := t.Compile()
+		if err != nil {
+			return nil, err
+		}
 		for _, iter := range iters {
 			for iter.Next() {
 				r := iter.Res()
-				switch t.Type {
-				case Dir:
-					if r.Dir == nil {
-						continue
-					}
-				case File:
-					if r.Dir != nil {
-						continue
-					}
+				if t.Type == Dir && r.Dir == nil || t.Type == File && r.Dir != nil {
+					continue
 				}
 				match := false
-				if t.Word == "" {
+				if re == nil {
 					match = true
 					if t.Wildcard == DblStart {
 						nextStrict = false
@@ -70,38 +101,19 @@ func Find(w *ws.Ws, query string) ([]*ws.Res, error) {
 						}
 					}
 				} else {
-					switch t.Wildcard {
-					case Exact:
-						match = r.Name == t.Word
-					case Start:
-						match = strings.HasSuffix(r.Name, t.Word)
+					match = re.MatchString(r.Name)
+					switch t.Wildcard & (DblStart | DblEnd) {
 					case DblStart:
 						strict = false
-						match = strings.HasSuffix(r.Name, t.Word)
 						if match && i != len(terms)-1 {
 							final = append(final, r)
 						}
-					case End, DblEnd:
-						match = strings.HasPrefix(r.Name, t.Word)
-						if match && t.Wildcard == DblEnd {
-							strict = false
-							nextStrict = false
-						}
-					case Start | End, DblStart | End, Start | DblEnd:
-						match = strings.Contains(r.Name, t.Word)
-						if !match {
-							break
-						}
-						if t.Wildcard == DblStart|End {
-							strict = false
-						}
-						if t.Wildcard == Start|DblEnd {
-							nextStrict = false
+					case DblEnd:
+						if match {
 							final = append(final, r)
 							nterm := Term{Wildcard: DblStart}
-							nterms := terms[:i]
-							if i == len(terms)-1 || terms[i+1] != nterm {
-								nterms = append(nterms, nterm)
+							if i == len(terms)-1 || !terms[i+1].Equal(nterm) {
+								nterms := append(terms[:i], nterm)
 								terms = append(nterms, terms[i:]...)
 							}
 						}

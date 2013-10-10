@@ -14,92 +14,97 @@ var parserTests = []struct {
 	// resources named "a"
 	{
 		`a`,
-		Query{Terms: []Term{{Word: `a`}}},
+		Query{Terms: []Term{{Words: []string{`a`}}}},
+	},
+	// resources starting with "a" containing "b" ending with "c"
+	{
+		`a*b*c`,
+		Query{Terms: []Term{{Words: []string{`a`, `b`, `c`}}}},
 	},
 	// resources with prefix "x."
 	{
 		`a*`,
-		Query{Terms: []Term{{Word: `a`, Wildcard: End}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Wildcard: End}}},
 	},
 	// resources with suffix ".go"
 	{
 		`*a`,
-		Query{Terms: []Term{{Word: `a`, Wildcard: Start}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Wildcard: Start}}},
 	},
 	// same as query "a" but does not match resources at depth 1
 	{
 		`/**/a`,
-		Query{Absolute: true, Terms: []Term{{Wildcard: DblStart, Type: Dir}, {Word: `a`}}},
+		Query{Absolute: true, Terms: []Term{{Wildcard: DblStart, Type: Dir}, {Words: []string{`a`}}}},
 	},
 	// resources containing "a"
 	{
 		`*a*`,
-		Query{Terms: []Term{{Word: `a`, Wildcard: Start | End}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Wildcard: Start | End}}},
 	},
 	// resources named "special\*$chars"
 	{
 		`special\\\*\$chars`,
-		Query{Terms: []Term{{Word: `special\*$chars`}}},
+		Query{Terms: []Term{{Words: []string{`special\*$chars`}}}},
 	},
 	// resources named "a"
 	{
 		`**/a`,
-		Query{Terms: []Term{{Wildcard: DblStart, Type: Dir}, {Word: `a`}}},
+		Query{Terms: []Term{{Wildcard: DblStart, Type: Dir}, {Words: []string{`a`}}}},
 	},
 	// files named "a"
 	{
 		`a$`,
-		Query{Terms: []Term{{Word: `a`, Type: File}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: File}}},
 	},
 	// dirs named "a"
 	{
 		`a/`,
-		Query{Terms: []Term{{Word: `a`, Type: Dir}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: Dir}}},
 	},
 	// children of "dir"
 	{
 		`a/*`,
-		Query{Terms: []Term{{Word: `a`, Type: Dir}, {Wildcard: Start}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: Dir}, {Wildcard: Start}}},
 	},
 	// grand children of "dir"
 	{
 		`a/*/*`,
-		Query{Terms: []Term{{Word: `a`, Type: Dir}, {Wildcard: Start, Type: Dir}, {Wildcard: Start}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: Dir}, {Wildcard: Start, Type: Dir}, {Wildcard: Start}}},
 	},
 	// descendant of "dir"
 	{
 		`a/**`,
-		Query{Terms: []Term{{Word: `a`, Type: Dir}, {Wildcard: DblStart}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: Dir}, {Wildcard: DblStart}}},
 	},
 	// a/*b || a/**/*b
 	{
 		`a/**b`,
-		Query{Terms: []Term{{Word: `a`, Type: Dir}, {Word: `b`, Wildcard: DblStart}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: Dir}, {Words: []string{`b`}, Wildcard: DblStart}}},
 	},
 	// a/b* || a/b*/**
 	{
 		`a/b**`,
-		Query{Terms: []Term{{Word: `a`, Type: Dir}, {Word: `b`, Wildcard: DblEnd}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: Dir}, {Words: []string{`b`}, Wildcard: DblEnd}}},
 	},
 	// a/*b* || a/**/*b*
 	{
 		`a/**b*`,
-		Query{Terms: []Term{{Word: `a`, Type: Dir}, {Word: `b`, Wildcard: DblStart | End}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: Dir}, {Words: []string{`b`}, Wildcard: DblStart | End}}},
 	},
 	// a/*b* || a/*b*/**
 	{
 		`a/*b**`,
-		Query{Terms: []Term{{Word: `a`, Type: Dir}, {Word: `b`, Wildcard: Start | DblEnd}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: Dir}, {Words: []string{`b`}, Wildcard: Start | DblEnd}}},
 	},
 	// *a*/b || *a*/**/b
 	{
 		`*a**/b`,
-		Query{Terms: []Term{{Word: `a`, Type: Dir, Wildcard: Start | DblEnd}, {Word: `b`}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: Dir, Wildcard: Start | DblEnd}, {Words: []string{`b`}}}},
 	},
 	// *a*/b
 	{
 		`**a*/b`,
-		Query{Terms: []Term{{Word: `a`, Type: Dir, Wildcard: DblStart | End}, {Word: `b`}}},
+		Query{Terms: []Term{{Words: []string{`a`}, Type: Dir, Wildcard: DblStart | End}, {Words: []string{`b`}}}},
 	},
 }
 
@@ -118,7 +123,7 @@ func TestParseQuery(t *testing.T) {
 			continue
 		}
 		for i, term := range test.query.Terms {
-			if q.Terms[i] != term {
+			if !q.Terms[i].Equal(term) {
 				t.Errorf("query %q at %d expect %+v got %+v", test.raw, i, term, q.Terms[i])
 			}
 		}

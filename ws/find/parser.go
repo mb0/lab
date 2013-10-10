@@ -14,7 +14,8 @@ import "fmt"
 //    escaped_char = `\` special_char
 //
 //    word = char {char}
-//    term = "*" ["*" [word] | word ["*"]] | word ["*" ["*"]]
+//    term = "*" ["*" [words] | words ["*"]] | words ["*" ["*"]]
+//    words = word {"*" word}
 //    query = ["/"] term {"/" term} ["/"] ["$"]
 //
 type tok int
@@ -53,35 +54,15 @@ Loop:
 			switch tok = p.next(); tok {
 			case star:
 				cur.Wildcard = DblStart
-				if tok = p.next(); tok == word {
-					cur.Word = string(p.buf)
-					if tok = p.next(); tok == star {
-						cur.Wildcard |= End
-						tok = p.next()
-					}
+				if tok = p.next(); tok != word {
+					break
 				}
+				tok = p.parseWords(&cur)
 			case word:
-				cur.Word = string(p.buf)
-				if tok = p.next(); tok == star {
-					if tok = p.next(); tok == star {
-						cur.Wildcard |= DblEnd
-						tok = p.next()
-					} else {
-						cur.Wildcard |= End
-					}
-				}
+				tok = p.parseWords(&cur)
 			}
 		case word:
-			cur.Word = string(p.buf)
-			tok = p.next()
-			if tok == star {
-				cur.Wildcard = End
-				tok = p.next()
-			}
-			if tok == star {
-				cur.Wildcard = DblEnd
-				tok = p.next()
-			}
+			tok = p.parseWords(&cur)
 		case dolar:
 			break Loop
 		}
@@ -106,6 +87,25 @@ Loop:
 		return q, fmt.Errorf("unexpected token %d", tok)
 	}
 	return q, nil
+}
+
+func (p *parser) parseWords(cur *Term) tok {
+	cur.Words = append(cur.Words, string(p.buf))
+	tok := p.next()
+	for tok == star {
+		if tok = p.next(); tok == word {
+			cur.Words = append(cur.Words, string(p.buf))
+			tok = p.next()
+		} else if cur.Wildcard&DblStart == 0 && tok == star {
+			cur.Wildcard |= DblEnd
+			tok = p.next()
+			break
+		} else {
+			cur.Wildcard |= End
+			break
+		}
+	}
+	return tok
 }
 
 func (p *parser) next() tok {

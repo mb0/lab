@@ -17,6 +17,7 @@ var mockdata = map[string][]string{
 	"/r/2/z.go":    {},
 	"/r/3/foo":     {"a", "b", "c"},
 	"/r/3/foo/bar": {"a", "b", "c"},
+	"/r/4/spam":    {"a1b", "a2b", "a3b"},
 }
 
 var queryTests = []struct {
@@ -37,9 +38,10 @@ var queryTests = []struct {
 	{"foo/**/", []string{"bar/"}},
 	{"foo/**$", []string{"a", "b", "c", "a", "b", "c"}},
 	{"foo/**a", []string{"a", "a"}},
-	{"foo/b**", []string{"bar/", "b", "b"}},
+	{"foo/b**", []string{"bar/", "b", "a", "b", "c"}},
 	{"foo/**a*", []string{"bar/", "a", "a"}},
 	{"foo/*a**", []string{"bar/", "a", "a", "b", "c"}},
+	{"a*b", []string{"a1b", "a2b", "a3b"}},
 }
 
 func TestFind(t *testing.T) {

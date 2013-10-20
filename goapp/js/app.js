@@ -14,6 +14,8 @@ require.config({
 
 define(["modal", "angular", "conn", "tabs", "overview", "report", "file"], function(modal) {
 
+angular.element(document).ready(function() {
+
 angular.module("goapp", ["goapp.conn", "goapp.tabs", "goapp.overview", "goapp.report", "goapp.file"])
 .config(function($routeProvider, $logProvider) {
 	$logProvider.debugEnabled(false);
@@ -32,4 +34,8 @@ angular.module("goapp", ["goapp.conn", "goapp.tabs", "goapp.overview", "goapp.re
 	}
 	conn.connect(proto +"//"+ location.host +"/ws");
 });
+
+angular.bootstrap(document, ['goapp']);
+});
+
 });

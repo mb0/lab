@@ -1,6 +1,12 @@
 golab
 =====
-golab is a Go IDE for Linux.
+golab was a Go IDE for Linux.
+
+This project is no longer maintained and might not build due to chganges in dependency projects.
+
+The author (mb0) does use neovim and is quite happy with it, while missing the convenient auto install and test facilities.
+The ot (operation transformation) package is worth a look and a good start for any collaborative text editing project, there is also a utf-8 based version with js client that can be shared.
+
 
 ![golab screenshot][screenshot]
 
